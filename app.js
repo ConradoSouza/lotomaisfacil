@@ -577,7 +577,31 @@ $('helpBtn').addEventListener('click', openHelp);
 $('helpClose').addEventListener('click', closeHelp);
 $('helpModal').addEventListener('click', e => { if (e.target === $('helpModal')) closeHelp(); });
 document.querySelectorAll('.openHelp').forEach(b => b.addEventListener('click', openHelp));
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHelp(); });
+
+// Balãozinho de explicação por item (data-tip)
+let curTip = null, curTrig = null;
+function closeTip() { if (curTip) { curTip.remove(); curTip = null; } if (curTrig) { curTrig.classList.remove('on'); curTrig = null; } }
+function showTip(el) {
+  closeTip();
+  const txt = el.getAttribute('data-tip'); if (!txt) return;
+  const pop = document.createElement('div'); pop.className = 'tip-pop'; pop.innerHTML = txt;
+  pop.addEventListener('click', e => e.stopPropagation());
+  document.body.appendChild(pop);
+  const r = el.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+  const pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let left = Math.min(r.left + window.scrollX, window.scrollX + vw - pw - 10);
+  left = Math.max(window.scrollX + 8, left);
+  let top = r.bottom + window.scrollY + 9;
+  if (r.bottom + ph + 16 > window.innerHeight && r.top - ph - 12 > 0) { top = r.top + window.scrollY - ph - 9; pop.classList.add('above'); }
+  pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  const arrow = (r.left + window.scrollX + r.width / 2) - left - 6;
+  pop.style.setProperty('--arrow', Math.max(10, Math.min(pw - 22, arrow)) + 'px');
+  curTip = pop; curTrig = el; el.classList.add('on');
+}
+document.querySelectorAll('[data-tip]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); if (curTrig === el) closeTip(); else showTip(el); }));
+document.addEventListener('click', closeTip);
+window.addEventListener('scroll', closeTip, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeHelp(); closeTip(); } });
 
 // Tema
 function applyTheme(t) { document.documentElement.setAttribute('data-theme', t); try { localStorage.setItem('lotomais-theme', t); } catch (e) {} }

@@ -202,6 +202,16 @@
     border:1px solid var(--line);background:var(--surface-2);color:var(--violet);font-size:11px;font-weight:800;
     cursor:pointer;vertical-align:middle;margin-left:7px;padding:0;font-family:inherit;flex:none;}
   .qbtn:active{transform:scale(.9);}
+  .qbtn.on{background:var(--violet);color:#fff;border-color:var(--violet);}
+  /* Balãozinho de explicação por item */
+  .tip-pop{position:absolute;z-index:200;max-width:min(300px,84vw);background:var(--surface);color:var(--ink-soft);
+    border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:13px;line-height:1.5;
+    box-shadow:0 10px 34px rgba(40,20,90,.24);animation:pop .14s ease;}
+  .tip-pop b{color:var(--ink);}
+  .tip-pop::after{content:"";position:absolute;top:-7px;width:12px;height:12px;background:var(--surface);
+    border-left:1px solid var(--line);border-top:1px solid var(--line);transform:rotate(45deg);left:var(--arrow,16px);}
+  .tip-pop.above::after{top:auto;bottom:-7px;transform:rotate(225deg);}
+  @keyframes pop{from{opacity:0;transform:translateY(4px) scale(.97);}to{opacity:1;transform:none;}}
   /* Legenda inline de cores */
   .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--muted);}
   .legend .li{display:flex;align-items:center;gap:6px;}
@@ -222,7 +232,8 @@
   .gloss-group h3{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--violet);margin:0 0 6px;font-weight:800;}
   .gloss{padding:9px 0;border-bottom:1px solid var(--line);}
   .gloss:last-child{border-bottom:none;}
-  .gloss b{display:block;font-size:14px;margin-bottom:2px;color:var(--ink);}
+  .gloss > b{display:block;font-size:14px;margin-bottom:2px;color:var(--ink);}
+  .gloss span b{color:var(--ink);}
   .gloss span{font-size:13px;color:var(--ink-soft);}
   .gloss .sw{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:middle;margin-right:5px;}
 </style>
@@ -257,11 +268,11 @@
     </section>
     <div class="grid2">
       <section class="block">
-        <h3>🔥 Mais quentes <span class="hint">as que mais saíram</span><button class="qbtn openHelp" title="O que é?">?</button></h3>
+        <h3>🔥 Mais quentes <span class="hint">as que mais saíram</span><button class="qbtn" data-tip="<b>Mais quentes:</b> as dezenas que <b>mais saíram</b> em todo o histórico (maior frequência). Atenção: 'quente' não fica mais provável — o sorteio é aleatório.">?</button></h3>
         <div class="card" id="hotList"></div>
       </section>
       <section class="block">
-        <h3>❄️ Mais atrasadas <span class="hint">há mais tempo sem sair</span><button class="qbtn openHelp" title="O que é?">?</button></h3>
+        <h3>❄️ Mais atrasadas <span class="hint">há mais tempo sem sair</span><button class="qbtn" data-tip="<b>Mais atrasadas:</b> as dezenas que estão há <b>mais concursos sem sair</b>. 'Atrasada' também não fica mais provável de sair.">?</button></h3>
         <div class="card" id="coldList"></div>
       </section>
     </div>
@@ -269,7 +280,7 @@
 
   <!-- DEZENAS -->
   <section id="tab-dezenas" class="tab">
-    <h2 class="page">Dezenas <button class="qbtn openHelp" title="Entenda Score, Atraso, Máx...">?</button></h2>
+    <h2 class="page">Dezenas <button class="qbtn" data-tip="<b>Score</b> (0–100): junta frequência, atraso, repetição e afinidade — é um ranking, <b>não previsão</b>. <b>Atraso</b>: concursos sem sair. <b>Máx</b>: maior atraso já registrado.">?</button></h2>
     <p class="sub">Score de 0–100 de cada dezena, combinando frequência, atraso, repetição e afinidade. Toque nos títulos para ordenar.</p>
     <section class="block">
       <label class="field">Janela de análise
@@ -299,7 +310,7 @@
 
   <!-- PADROES -->
   <section id="tab-padroes" class="tab">
-    <h2 class="page">Padrões <button class="qbtn openHelp" title="Entenda os padrões">?</button></h2>
+    <h2 class="page">Padrões <button class="qbtn" data-tip="Como os sorteios se comportam: pares/ímpares, soma, faixas, repetição do concurso anterior e duplas que mais saem juntas. O selo dourado marca o <b>mais comum</b>.">?</button></h2>
     <p class="sub">Como os sorteios se comportam no histórico. Bom para entender o que é "normal" na Lotofácil.</p>
     <div class="grid2">
       <section class="block"><h3>Pares por sorteio</h3><div class="card" id="parChart"></div></section>
@@ -317,7 +328,7 @@
 
   <!-- GERAR -->
   <section id="tab-gerar" class="tab">
-    <h2 class="page">Gerar jogos <button class="qbtn openHelp" title="Entenda estratégias e fechamento">?</button></h2>
+    <h2 class="page">Gerar jogos <button class="qbtn" data-tip="<b>Estratégia</b>: jeito pronto de montar o jogo. <b>Filtros</b>: regras (repetir do último, pares/ímpares, soma, faixas). <b>Fechamento</b>: bolão com garantia de prêmio mínimo.">?</button></h2>
     <div class="seg" id="gerToggle" style="margin:2px 0 16px;">
       <button data-mode="estrategia" class="on">Por estratégia</button>
       <button data-mode="fechamento">Fechamento</button>
@@ -400,7 +411,7 @@
 
   <!-- CONFERIR -->
   <section id="tab-conferir" class="tab">
-    <h2 class="page">Conferir jogo <button class="qbtn openHelp" title="Ajuda">?</button></h2>
+    <h2 class="page">Conferir jogo <button class="qbtn" data-tip="Escolha suas dezenas e veja quantas você acertaria em <b>cada concurso da história</b> e no último.">?</button></h2>
     <p class="sub">Escolha de 15 a 18 dezenas e veja como esse jogo teria se saído em todos os concursos, e quanto acertaria no último.</p>
     <div class="picker" id="picker"></div>
     <p class="sub" id="pickMsg" style="text-align:center;"></p>
@@ -413,7 +424,7 @@
 
   <!-- LABORATÓRIO -->
   <section id="tab-lab" class="tab">
-    <h2 class="page">Laboratório <button class="qbtn openHelp" title="Entenda backtest e Monte Carlo">?</button></h2>
+    <h2 class="page">Laboratório <button class="qbtn" data-tip="<b>Backtest</b>: testa a estratégia no passado sem 'espiar' o futuro. <b>Esperado pelo acaso</b>: mostra que nada vence o sorteio. <b>Monte Carlo</b>: estima sua chance de prêmio.">?</button></h2>
     <p class="sub">Monte uma estratégia ajustando o peso de cada critério do Score e teste como ela teria se saído no histórico real — sem "espiar" o futuro (backtesting walk-forward).</p>
 
     <section class="block">
@@ -482,7 +493,7 @@
 
   <!-- MEUS JOGOS -->
   <section id="tab-meus" class="tab">
-    <h2 class="page">Meus jogos <button class="qbtn openHelp" title="Ajuda">?</button></h2>
+    <h2 class="page">Meus jogos <button class="qbtn" data-tip="Salve suas apostas; a cada concurso as bolinhas <b>douradas</b> mostram o que você acertou (🏆 = ganhou prêmio).">?</button></h2>
     <p class="sub">Salve suas apostas e acompanhe os acertos a cada novo concurso. Ficam guardadas neste aparelho.</p>
     <div class="legend">
       <span class="li"><span class="dot" style="background:radial-gradient(circle at 32% 28%,#f4c04d,#e0a01a);"></span>acertou (saiu no concurso)</span>
