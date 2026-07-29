@@ -1,0 +1,38 @@
+# Atualiza a base de concursos da Lotofácil automaticamente.
+# Pressupõe que a pasta "lotofacil" é a RAIZ do repositório publicado.
+# (Se o app estiver numa subpasta, ajuste os caminhos abaixo.)
+name: Atualizar Lotofácil
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # todo dia às 02:00 UTC (~23:00 BRT, após o sorteio)
+  workflow_dispatch: {}    # permite rodar manualmente pelo botão do GitHub
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v4
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Buscar concursos novos
+        run: node scripts/atualizar.js
+
+      - name: Salvar alterações (se houver)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dados/lotofacil.js
+          if git diff --staged --quiet; then
+            echo "Sem concursos novos."
+          else
+            git commit -m "Atualiza concursos da Lotofácil"
+            git push
+          fi

@@ -1,0 +1,74 @@
+LOTO+FACIL — Análise de loterias (PWA)
+========================================
+
+App de análise estatística e geração de jogos de loterias por estratégias.
+Suporta 6 loterias — LOTOFÁCIL, MEGA-SENA, QUINA, LOTOMANIA, DUPLA SENA e
+DIA DE SORTE — troque no seletor do topo (cada loteria tem sua cor e suas
+regras). Roda no navegador, funciona offline e pode ser instalado como app.
+
+COMO RODAR (Windows)
+--------------------
+1. Dê duplo clique em "iniciar.bat".
+2. O navegador abre sozinho em http://localhost:8000/index.html
+   (usa o Node.js, que você já tem instalado.)
+
+INSTALAR COMO APP
+-----------------
+Com a página aberta no Chrome ou Edge:
+- Clique no ícone "Instalar" na barra de endereço, OU
+- Menu (⋮) > "Instalar Loto+Facil..."
+Cria um atalho que abre em janela própria, sem barra do navegador.
+
+O QUE TEM (para cada loteria)
+-----------------------------
+- Painel .... resumo, último concurso, mais quentes e mais atrasadas
+- Dezenas ... Score 0–100 de cada número (freq + atraso + repetição + afinidade)
+- Padrões ... pares/ímpares (com destaque no que mais sai), soma, faixas,
+              repetição e duplas que saem juntas
+- Gerar ..... 2 modos: (1) gerador por ESTRATÉGIAS (presets + filtros) e
+              (2) FECHAMENTO/desdobramento — bolão com garantia de prêmio
+              mínimo, verificada matematicamente
+- Lab ....... Laboratório de estratégias: ajuste os pesos do Score e teste no
+              histórico real (backtesting walk-forward, sem "espiar" o futuro),
+              compare estratégias + Monte Carlo (chance de prêmio jogando X jogos)
+- Conferir .. testa um jogo em todo o histórico e no último concurso
+- Exportar .. jogos gerados e fechamentos saem em CSV e PDF (botões no resultado)
+- Jogos ..... "Meus jogos": salve suas apostas e veja os acertos a cada concurso
+              (bolinhas douradas = acertou; 🏆 quando ganha). Salvas neste aparelho.
+
+ATUALIZAR OS CONCURSOS
+----------------------
+- Manual: dê duplo clique em "atualizar-dados.bat" (busca os concursos novos
+  das 3 loterias na internet e atualiza as bases). Precisa do Node.js.
+- Automático: quando o app estiver publicado no GitHub, o robô em
+  .github/workflows/atualizar-lotofacil.yml roda sozinho todo dia.
+- Adicionar outra loteria já suportada pela API: node scripts/semear.js <nome>
+
+NOTAS POR LOTERIA
+-----------------
+- Lotomania: números 00-99, aposta fixa de 50, premia até 20 e também 0
+  acertos; sem fechamento (bolão inviável).
+- Dupla Sena: cada concurso tem 2 sorteios (contam como 2 na análise).
+- Dia de Sorte: analisa só os números (o "Mês da Sorte" é ignorado).
+
+PRÓXIMOS PASSOS (opcionais)
+---------------------------
+- Publicar online (GitHub Pages/Vercel) para instalar no celular e ligar o
+  robô de atualização automática.
+- Mais loterias (Timemania, +Milionária...) — a base já é multi-loteria.
+
+ARQUIVOS
+--------
+- index.html ......... interface e estilo
+- app.js ............. lógica (config das loterias, score, gerador, etc.)
+- dados/*.js ......... bases: lotofacil.js, megasena.js, quina.js
+                       (formato window.LOTO_DB["loteria"] = [[concurso, "data", [dezenas]]])
+- scripts/atualizar.js ... busca concursos novos (todas as loterias)
+- scripts/semear.js ...... baixa TODO o histórico de uma loteria (seed inicial)
+- manifest.json / sw.js / icons ... configuração do PWA (instalável e offline)
+- server.js / iniciar.bat ......... sobem o servidor local
+
+IMPORTANTE
+----------
+As loterias são sorteios aleatórios. Nenhuma estatística prevê o próximo
+resultado. Este app é ferramenta de estudo e diversão — não garante prêmio.
