@@ -196,6 +196,35 @@
   nav.tabbar button.active .ic{transform:translateY(-1px);}
 
   .footer-note{color:var(--muted);font-size:11.5px;text-align:center;margin-top:26px;line-height:1.5;}
+
+  /* Botão "?" de ajuda contextual */
+  .qbtn{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;
+    border:1px solid var(--line);background:var(--surface-2);color:var(--violet);font-size:11px;font-weight:800;
+    cursor:pointer;vertical-align:middle;margin-left:7px;padding:0;font-family:inherit;flex:none;}
+  .qbtn:active{transform:scale(.9);}
+  /* Legenda inline de cores */
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--muted);}
+  .legend .li{display:flex;align-items:center;gap:6px;}
+  .legend .dot{width:14px;height:14px;border-radius:50%;flex:none;}
+
+  /* Modal do glossário */
+  .modal{position:fixed;inset:0;z-index:100;background:rgba(10,6,25,.55);display:flex;align-items:flex-end;justify-content:center;}
+  @media(min-width:640px){.modal{align-items:center;padding:20px;}}
+  .modal-card{background:var(--surface);border:1px solid var(--line);border-radius:20px 20px 0 0;width:100%;
+    max-width:620px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 -12px 44px rgba(0,0,0,.35);
+    animation:slideup .25s ease;}
+  @media(min-width:640px){.modal-card{border-radius:20px;max-height:85vh;}}
+  @keyframes slideup{from{transform:translateY(24px);opacity:.4;}to{transform:translateY(0);opacity:1;}}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line);}
+  .modal-head h2{margin:0;font-size:18px;}
+  .modal-body{overflow-y:auto;padding:4px 20px 26px;}
+  .gloss-group{margin-top:20px;}
+  .gloss-group h3{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--violet);margin:0 0 6px;font-weight:800;}
+  .gloss{padding:9px 0;border-bottom:1px solid var(--line);}
+  .gloss:last-child{border-bottom:none;}
+  .gloss b{display:block;font-size:14px;margin-bottom:2px;color:var(--ink);}
+  .gloss span{font-size:13px;color:var(--ink-soft);}
+  .gloss .sw{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:middle;margin-right:5px;}
 </style>
 </head>
 <body>
@@ -211,6 +240,7 @@
       <option value="duplasena">Dupla Sena</option>
       <option value="diadesorte">Dia de Sorte</option>
     </select>
+    <button class="hbtn" id="helpBtn" title="Ajuda / glossário">?</button>
     <button class="hbtn" id="themeBtn" title="Alternar tema">◐</button>
   </div>
 </header>
@@ -227,11 +257,11 @@
     </section>
     <div class="grid2">
       <section class="block">
-        <h3>🔥 Mais quentes <span class="hint">frequência</span></h3>
+        <h3>🔥 Mais quentes <span class="hint">as que mais saíram</span><button class="qbtn openHelp" title="O que é?">?</button></h3>
         <div class="card" id="hotList"></div>
       </section>
       <section class="block">
-        <h3>❄️ Mais atrasadas <span class="hint">sem sair há</span></h3>
+        <h3>❄️ Mais atrasadas <span class="hint">há mais tempo sem sair</span><button class="qbtn openHelp" title="O que é?">?</button></h3>
         <div class="card" id="coldList"></div>
       </section>
     </div>
@@ -239,7 +269,7 @@
 
   <!-- DEZENAS -->
   <section id="tab-dezenas" class="tab">
-    <h2 class="page">Dezenas</h2>
+    <h2 class="page">Dezenas <button class="qbtn openHelp" title="Entenda Score, Atraso, Máx...">?</button></h2>
     <p class="sub">Score de 0–100 de cada dezena, combinando frequência, atraso, repetição e afinidade. Toque nos títulos para ordenar.</p>
     <section class="block">
       <label class="field">Janela de análise
@@ -255,12 +285,12 @@
     <div class="card tbl-wrap">
       <table id="dezTable">
         <thead><tr>
-          <th data-k="n">Nº</th>
-          <th data-k="score" class="act">Score</th>
-          <th data-k="freq">Freq.</th>
-          <th data-k="pct">%</th>
-          <th data-k="atraso">Atraso</th>
-          <th data-k="maxAtraso">Máx</th>
+          <th data-k="n" title="Número / dezena">Nº</th>
+          <th data-k="score" class="act" title="Nota 0–100 (freq + atraso + repetição + afinidade). Ranking, não previsão.">Score</th>
+          <th data-k="freq" title="Vezes que saiu na janela escolhida">Freq.</th>
+          <th data-k="pct" title="Frequência em porcentagem">%</th>
+          <th data-k="atraso" title="Concursos desde a última vez que saiu (0 = saiu no último)">Atraso</th>
+          <th data-k="maxAtraso" title="Maior atraso já registrado na história">Máx</th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -269,7 +299,7 @@
 
   <!-- PADROES -->
   <section id="tab-padroes" class="tab">
-    <h2 class="page">Padrões</h2>
+    <h2 class="page">Padrões <button class="qbtn openHelp" title="Entenda os padrões">?</button></h2>
     <p class="sub">Como os sorteios se comportam no histórico. Bom para entender o que é "normal" na Lotofácil.</p>
     <div class="grid2">
       <section class="block"><h3>Pares por sorteio</h3><div class="card" id="parChart"></div></section>
@@ -287,7 +317,7 @@
 
   <!-- GERAR -->
   <section id="tab-gerar" class="tab">
-    <h2 class="page">Gerar jogos</h2>
+    <h2 class="page">Gerar jogos <button class="qbtn openHelp" title="Entenda estratégias e fechamento">?</button></h2>
     <div class="seg" id="gerToggle" style="margin:2px 0 16px;">
       <button data-mode="estrategia" class="on">Por estratégia</button>
       <button data-mode="fechamento">Fechamento</button>
@@ -370,7 +400,7 @@
 
   <!-- CONFERIR -->
   <section id="tab-conferir" class="tab">
-    <h2 class="page">Conferir jogo</h2>
+    <h2 class="page">Conferir jogo <button class="qbtn openHelp" title="Ajuda">?</button></h2>
     <p class="sub">Escolha de 15 a 18 dezenas e veja como esse jogo teria se saído em todos os concursos, e quanto acertaria no último.</p>
     <div class="picker" id="picker"></div>
     <p class="sub" id="pickMsg" style="text-align:center;"></p>
@@ -383,7 +413,7 @@
 
   <!-- LABORATÓRIO -->
   <section id="tab-lab" class="tab">
-    <h2 class="page">Laboratório</h2>
+    <h2 class="page">Laboratório <button class="qbtn openHelp" title="Entenda backtest e Monte Carlo">?</button></h2>
     <p class="sub">Monte uma estratégia ajustando o peso de cada critério do Score e teste como ela teria se saído no histórico real — sem "espiar" o futuro (backtesting walk-forward).</p>
 
     <section class="block">
@@ -452,8 +482,13 @@
 
   <!-- MEUS JOGOS -->
   <section id="tab-meus" class="tab">
-    <h2 class="page">Meus jogos</h2>
+    <h2 class="page">Meus jogos <button class="qbtn openHelp" title="Ajuda">?</button></h2>
     <p class="sub">Salve suas apostas e acompanhe os acertos a cada novo concurso. Ficam guardadas neste aparelho.</p>
+    <div class="legend">
+      <span class="li"><span class="dot" style="background:radial-gradient(circle at 32% 28%,#f4c04d,#e0a01a);"></span>acertou (saiu no concurso)</span>
+      <span class="li"><span class="dot" style="background:radial-gradient(circle at 32% 28%,var(--violet-2),var(--violet));"></span>não saiu</span>
+      <span class="li">🏆 = ganhou prêmio</span>
+    </div>
     <section class="block">
       <h3>Adicionar aposta <span class="hint">15 a 20 dezenas</span></h3>
       <div class="card">
@@ -473,6 +508,72 @@
 
   <div class="footer-note">Loto+Facil · ferramenta estatística e educativa · não garante resultado · base até o concurso <span id="footN"></span></div>
 </main>
+
+<div id="helpModal" class="modal" style="display:none;">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>Glossário — entenda os termos</h2>
+      <button class="hbtn" id="helpClose" title="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--muted);margin:12px 0 0;">Explicação simples de tudo que aparece no app. Toque no <b style="color:var(--violet);">?</b> em qualquer tela para abrir aqui.</p>
+
+      <div class="gloss-group">
+        <h3>Painel</h3>
+        <div class="gloss"><b>🔥 Mais quentes</b><span>Dezenas que <b>mais saíram</b> em todo o histórico (maior frequência). Atenção: "quente" não significa mais provável — o sorteio é aleatório.</span></div>
+        <div class="gloss"><b>❄️ Mais atrasadas</b><span>Dezenas que estão há <b>mais concursos sem sair</b>. "Atrasada" também não fica mais provável de sair.</span></div>
+        <div class="gloss"><b>Soma média</b><span>A soma dos números sorteados, na média dos concursos.</span></div>
+        <div class="gloss"><b>Pares por sorteio</b><span>Quantos números pares saem, em média, por concurso.</span></div>
+      </div>
+
+      <div class="gloss-group">
+        <h3>Dezenas (Score)</h3>
+        <div class="gloss"><b>Score (0–100)</b><span>Nota de cada dezena que combina frequência, atraso, repetição, afinidade e tendência. Quanto maior, melhor ela está pelos critérios. É um <b>ranking estatístico, não uma previsão</b>.</span></div>
+        <div class="gloss"><b>Frequência / %</b><span>Quantas vezes (e em que porcentagem) a dezena saiu na janela escolhida.</span></div>
+        <div class="gloss"><b>Atraso</b><span>Há quantos concursos a dezena não sai (0 = saiu no último).</span></div>
+        <div class="gloss"><b>Máx</b><span>O <b>maior atraso</b> que essa dezena já teve em toda a história — ajuda a ver até onde ela costuma "sumir".</span></div>
+        <div class="gloss"><b>Janela (20/50/100/500/tudo)</b><span>Sobre quantos concursos recentes calcular a frequência mostrada.</span></div>
+      </div>
+
+      <div class="gloss-group">
+        <h3>Padrões</h3>
+        <div class="gloss"><b>Pares / Ímpares</b><span>Quantos números pares e ímpares saem por sorteio, e qual combinação é mais comum.</span></div>
+        <div class="gloss"><b>Soma</b><span>Distribuição da soma dos números sorteados.</span></div>
+        <div class="gloss"><b>Faixas</b><span>Divide os números em grupos (ex.: 1–5, 6–10...) e mostra o quanto cada grupo aparece.</span></div>
+        <div class="gloss"><b>Repetição do anterior</b><span>Quantos números se repetem do concurso imediatamente anterior.</span></div>
+        <div class="gloss"><b>Afinidade / duplas</b><span>Pares de números que costumam <b>sair juntos</b> com mais frequência.</span></div>
+        <div class="gloss"><b>Selo "+ sai" (dourado)</b><span>Marca o valor <b>mais comum</b> daquele gráfico.</span></div>
+      </div>
+
+      <div class="gloss-group">
+        <h3>Gerar jogos</h3>
+        <div class="gloss"><b>Estratégia</b><span>Um jeito pronto de montar o jogo (equilibrada, quentes, atrasadas, afinidade...).</span></div>
+        <div class="gloss"><b>Filtros</b><span>Regras que o jogo deve respeitar: repetir do último, equilíbrio de pares/ímpares, soma típica, distribuir pelas faixas, peso por Score.</span></div>
+        <div class="gloss"><b>Fechamento / desdobramento</b><span>Jogar um <b>bolão</b> de várias dezenas usando um conjunto reduzido de jogos, em vez de todas as combinações.</span></div>
+        <div class="gloss"><b>Garantia</b><span>O prêmio mínimo que o fechamento <b>assegura</b> — desde que você acerte as dezenas dentro do seu bolão.</span></div>
+      </div>
+
+      <div class="gloss-group">
+        <h3>Lab (Laboratório)</h3>
+        <div class="gloss"><b>Pesos</b><span>Quanto cada critério influencia o Score. Você ajusta para criar sua própria estratégia.</span></div>
+        <div class="gloss"><b>Backtest</b><span>Testa a estratégia no passado, escolhendo as dezenas <b>só com os dados de cada época</b> (sem "espiar" o futuro), e vê como teria se saído.</span></div>
+        <div class="gloss"><b>Esperado pelo acaso</b><span>Quantos acertos qualquer jogo teria, na média, só por sorte. As estratégias ficam sempre pertinho desse número — é a prova de que nada prevê o sorteio.</span></div>
+        <div class="gloss"><b>Monte Carlo</b><span>Simula milhares de concursos para estimar sua <b>chance real de prêmio</b> jogando vários jogos.</span></div>
+      </div>
+
+      <div class="gloss-group">
+        <h3>Conferir e Meus jogos</h3>
+        <div class="gloss"><b>Acertos</b><span>Quantas das suas dezenas saíram no concurso.</span></div>
+        <div class="gloss"><b><span class="sw" style="background:radial-gradient(circle at 32% 28%,#f4c04d,#e0a01a);"></span>Bolinha dourada</b><span>Número seu que foi sorteado.</span></div>
+        <div class="gloss"><b>🏆 Troféu</b><span>Você teria ganho um prêmio (atingiu a faixa mínima de acertos daquela loteria).</span></div>
+      </div>
+
+      <div class="note" style="margin:20px 0 0;">
+        <b>Importante:</b> as loterias são sorteios <b>aleatórios</b>. Nenhuma estatística, score ou estratégia prevê o próximo resultado. Este app é uma ferramenta de <b>estudo e diversão</b> — não garante prêmio.
+      </div>
+    </div>
+  </div>
+</div>
 
 <nav class="tabbar" id="tabbar">
   <button data-tab="painel" class="active"><span class="ic">🏠</span>Painel</button>

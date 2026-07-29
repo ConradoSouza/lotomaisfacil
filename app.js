@@ -570,6 +570,15 @@ $('tabbar').querySelectorAll('button').forEach(btn => btn.addEventListener('clic
   btn.classList.add('active'); $('tab-' + btn.dataset.tab).classList.add('active'); window.scrollTo({ top: 0, behavior: 'smooth' });
 }));
 
+// Glossário / ajuda
+function openHelp() { $('helpModal').style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+function closeHelp() { $('helpModal').style.display = 'none'; document.body.style.overflow = ''; }
+$('helpBtn').addEventListener('click', openHelp);
+$('helpClose').addEventListener('click', closeHelp);
+$('helpModal').addEventListener('click', e => { if (e.target === $('helpModal')) closeHelp(); });
+document.querySelectorAll('.openHelp').forEach(b => b.addEventListener('click', openHelp));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHelp(); });
+
 // Tema
 function applyTheme(t) { document.documentElement.setAttribute('data-theme', t); try { localStorage.setItem('lotomais-theme', t); } catch (e) {} }
 (function () { let t; try { t = localStorage.getItem('lotomais-theme'); } catch (e) {} if (t) applyTheme(t); })();
