@@ -671,10 +671,12 @@ $('meusAdd').addEventListener('click', () => { if (selMeus.size < L.apostaMin ||
 
 // Buscar concurso
 function buscarConcurso() {
-  const n = parseInt($('buscaConc').value);
-  if (!n) { $('buscaResult').innerHTML = ''; return; }
-  const found = DRAWS.filter(d => d[0] === n);
-  if (!found.length) { $('buscaResult').innerHTML = `<div class="note">Concurso #${n} não encontrado. A base vai de #${DRAWS[0][0]} a #${DRAWS[N - 1][0]}.</div>`; return; }
+  const q = ($('buscaConc').value || '').trim();
+  if (!q) { $('buscaResult').innerHTML = ''; return; }
+  const porData = q.includes('/');
+  const found = porData ? DRAWS.filter(d => d[1].includes(q)) : DRAWS.filter(d => d[0] === parseInt(q));
+  if (!found.length) { $('buscaResult').innerHTML = `<div class="note">${porData ? 'Nenhum concurso na data "' + q + '"' : 'Concurso #' + q + ' não encontrado'}. A base vai de #${DRAWS[0][0]} (${DRAWS[0][1]}) a #${DRAWS[N - 1][0]} (${DRAWS[N - 1][1]}).</div>`; return; }
+  if (found.length > 12) { $('buscaResult').innerHTML = `<div class="note">${found.length} concursos encontrados — refine a data (ex.: 27/07/2026).</div>`; return; }
   $('buscaResult').innerHTML = found.map((d, i) =>
     `<div style="margin-bottom:${found.length > 1 ? 10 : 0}px;"><p class="sub" style="margin:0 0 6px;">Concurso #${d[0]} · ${d[1]}${found.length > 1 ? ' · ' + (i + 1) + 'º sorteio' : ''}</p><div class="balls">${d[2].map(x => ball(x, 'sm')).join('')}</div></div>`
   ).join('');
