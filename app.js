@@ -207,6 +207,18 @@ function renderPadroes() {
     const peak = i === 0, badge = peak ? '<span class="peaktag">+ junta</span>' : '';
     return `<div class="barline ${peak ? 'peak' : ''}"><div class="bl" style="display:flex;gap:4px">${ball(a, 'sm')}${ball(b, 'sm')}</div><div class="bt"><div class="bf ${peak ? 'peak' : 'strong'}" style="width:${c / maxPair * 100}%"></div></div><div class="bv">${c}×${badge}</div></div>`;
   }).join('');
+
+  renderEvo();
+}
+function renderEvo() {
+  const n = parseInt($('evoSel').value) || NUMS[0];
+  const nblocks = Math.min(18, N), size = Math.ceil(N / nblocks), items = [];
+  for (let start = 0; start < N; start += size) {
+    const end = Math.min(N, start + size); let c = 0;
+    for (let i = start; i < end; i++) if (DRAWS[i][2].indexOf(n) !== -1) c++;
+    items.push({ label: '#' + DRAWS[start][0], val: c, suffix: c + '/' + (end - start) });
+  }
+  $('evoChart').innerHTML = barsRanked(items);
 }
 
 /* ================= Gerador ================= */
@@ -243,16 +255,28 @@ function sampleWeighted(pool, weights, count) {
   return chosen;
 }
 function buildCandidate(cfg) {
-  const w = {}; NUMS.forEach(n => w[n] = baseWeight(n));
-  let game;
-  if (cfg.rep) {
-    const nonLast = NUMS.filter(n => !lastSet.has(n));
-    const target = Math.round(repMean), lo = Math.max(0, target - 1), hi = Math.min(K, target + 1, lastDraw.length);
-    const repN = Math.min(hi, Math.max(lo, lo + Math.floor(Math.random() * (hi - lo + 1))), cfg.qtd);
-    const a = sampleWeighted(lastDraw, w, repN), b = sampleWeighted(nonLast, w, cfg.qtd - a.length);
-    game = a.concat(b);
-  } else game = sampleWeighted(NUMS.slice(), w, cfg.qtd);
-  return game.sort((a, b) => a - b);
+  const allowed = NUMS.filter(n => !excluidas.has(n));
+  const fx = [...fixadas].filter(n => !excluidas.has(n)).slice(0, cfg.qtd);
+  const fxSet = new Set(fx);
+  const w = {}; allowed.forEach(n => w[n] = baseWeight(n));
+  const need = cfg.qtd - fx.length;
+  let rest = [];
+  if (need > 0) {
+    if (cfg.rep) {
+      const lastPool = lastDraw.filter(n => !excluidas.has(n) && !fxSet.has(n));
+      const nonLast = allowed.filter(n => !lastSet.has(n) && !fxSet.has(n));
+      const fixedReps = fx.filter(n => lastSet.has(n)).length;
+      const target = Math.round(repMean), lo = Math.max(0, target - 1), hi = Math.min(K, target + 1, lastDraw.length);
+      let repN = (lo + Math.floor(Math.random() * (hi - lo + 1))) - fixedReps;
+      repN = Math.max(0, Math.min(repN, lastPool.length, need));
+      const a = sampleWeighted(lastPool, w, repN), aSet = new Set(a);
+      const b = sampleWeighted(nonLast.filter(n => !aSet.has(n)), w, need - a.length);
+      rest = a.concat(b);
+    } else {
+      rest = sampleWeighted(allowed.filter(n => !fxSet.has(n)), w, need);
+    }
+  }
+  return fx.concat(rest).sort((a, b) => a - b);
 }
 function fitScore(game, cfg) {
   let active = 0, ok = 0;
@@ -416,6 +440,23 @@ function conferirMsg() { $('pickMsg').textContent = `${selConferir.size} dezena(
 function meusMsg() { $('meusPickMsg').textContent = `${selMeus.size} dezena(s) selecionada(s) · ${L.apostaMin} a ${L.apostaMax}`; }
 function fechMsg() { $('fechMsg').textContent = `${selFech.size} dezena(s) · escolha de ${K + 1} a ${L.fechMax}`; }
 
+// grid de dezenas fixas/excluídas do gerador (toque cicla: neutro -> fixa -> excluída)
+const fixadas = new Set(), excluidas = new Set();
+function buildFixGrid() {
+  const box = $('fixPicker'); box.innerHTML = ''; fixadas.clear(); excluidas.clear();
+  box.style.gridTemplateColumns = `repeat(${L.cols},1fr)`;
+  box.style.maxWidth = L.cols > 5 ? '480px' : '320px';
+  NUMS.forEach(n => {
+    const c = document.createElement('div'); c.className = 'pcell'; c.textContent = pad(n);
+    c.addEventListener('click', () => {
+      if (fixadas.has(n)) { fixadas.delete(n); excluidas.add(n); c.classList.remove('fixa'); c.classList.add('excl'); }
+      else if (excluidas.has(n)) { excluidas.delete(n); c.classList.remove('excl'); }
+      else { fixadas.add(n); c.classList.add('fixa'); }
+    });
+    box.appendChild(c);
+  });
+}
+
 /* ================= Meus jogos ================= */
 let meusJogos = [];
 function meusKey() { return 'lotomais-jogos-' + KEY; }
@@ -427,6 +468,12 @@ function addMeusGames(arr) {
   saveMeus(); renderMeus();
 }
 function deleteMeus(id) { meusJogos = meusJogos.filter(j => j.id !== id); saveMeus(); renderMeus(); }
+// desempenho no histórico inteiro: melhor resultado e quantas vezes teria premiado
+function histPerf(nums) {
+  const s = new Set(nums); let best = 0, wins = 0;
+  for (let i = 0; i < N; i++) { let h = 0; const d = DRAWS[i][2]; for (let k = 0; k < d.length; k++) if (s.has(d[k])) h++; if (h > best) best = h; if (ganhou(h)) wins++; }
+  return { best, wins, total: N };
+}
 function renderMeus() {
   $('meusCount').textContent = meusJogos.length ? meusJogos.length + ' aposta(s)' : '';
   if (!meusJogos.length) { $('meusList').innerHTML = `<div class="note">Nenhuma aposta salva ainda. Adicione acima, ou use o botão ⭐ nos jogos gerados.</div>`; return; }
@@ -435,10 +482,12 @@ function renderMeus() {
     const hits = j.nums.filter(n => lastS.has(n)).length, win = ganhou(hits), pr = premioDe(hits);
     const premioTxt = win && pr && pr[1] > 0 ? ' · ~' + moneyShort(pr[0]) : '';
     const dt = new Date(j.created).toLocaleDateString('pt-BR');
+    const perf = histPerf(j.nums);
+    const perfTxt = perf.wins ? `melhor <b>${perf.best}</b> · premiaria <b>${perf.wins}×</b> em ${perf.total.toLocaleString('pt-BR')} concursos` : `melhor <b>${perf.best}</b> · nunca premiaria em ${perf.total.toLocaleString('pt-BR')} concursos`;
     return `<div class="game">
       <div class="ghead"><span class="gtitle">${j.nums.length} dezenas · ${dt}</span><span style="display:flex;gap:6px;"><button class="chip" data-wa="${j.nums.join(',')}" type="button" style="padding:4px 10px;" title="Compartilhar no WhatsApp">📱</button><button class="chip" data-del="${j.id}" type="button" style="padding:4px 11px;">✕</button></span></div>
       <div class="balls">${j.nums.map(n => ball(n, lastS.has(n) ? 'sm gold' : 'sm')).join('')}</div>
-      <div class="gmeta"><span class="tagm" style="${win ? 'background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);border-color:transparent;' : ''}">Concurso #${last[0]}: <b>${hits}</b> acertos${win ? ' 🏆' + premioTxt : ''}</span></div>
+      <div class="gmeta"><span class="tagm" style="${win ? 'background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);border-color:transparent;' : ''}">Concurso #${last[0]}: <b>${hits}</b> acertos${win ? ' 🏆' + premioTxt : ''}</span><span class="tagm">${perfTxt}</span></div>
     </div>`;
   }).join('');
   $('meusList').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => deleteMeus(b.dataset.del)));
@@ -464,11 +513,14 @@ function buildLottery(key) {
   $('labTopK').innerHTML = options(qtdVals, K);
   const garVals = L.premios.filter(p => p < K); garVals.push(K);
   $('fechGar').innerHTML = garVals.map(p => `<option value="${p}">${p === K ? 'Completo (todos os jogos)' : p + (L.total <= 25 ? ' pontos' : ' acertos')}</option>`).join('');
+  const hottest = [...NUMS].sort((a, b) => freqAll[b] - freqAll[a])[0];
+  $('evoSel').innerHTML = options(NUMS, hottest, pad);
 
   // pickers
   buildPicker($('picker'), selConferir, () => L.apostaMax, conferirMsg);
   buildPicker($('meusPicker'), selMeus, () => L.apostaMax, meusMsg);
   buildPicker($('fechPicker'), selFech, () => L.fechMax, fechMsg);
+  buildFixGrid();
 
   // fechamento (esconder onde não faz sentido, ex.: Lotomania)
   const fbtn = $('gerToggle').querySelector('[data-mode="fechamento"]');
@@ -512,10 +564,13 @@ $('lotSel').addEventListener('change', e => { buildLottery(e.target.value); try 
 
 $('dezTable').querySelectorAll('th').forEach(th => th.addEventListener('click', () => { const k = th.dataset.k; dezSort.dir = dezSort.k === k ? -dezSort.dir : -1; dezSort.k = k; renderDezenas(); }));
 $('janelaSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { $('janelaSeg').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); janela = parseInt(b.dataset.j); renderDezenas(); }));
+$('evoSel').addEventListener('change', renderEvo);
 
 $('presetChips').querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => { $('presetChips').querySelectorAll('.chip').forEach(x => x.classList.remove('on')); c.classList.add('on'); applyPreset(c.dataset.preset); }));
 $('genBtn').addEventListener('click', () => {
   const cfg = { qtd: parseInt($('genQtd').value), rep: $('fRep').checked, par: $('fPar').checked, soma: $('fSoma').checked, faixa: $('fFaixa').checked, score: $('fScore').checked };
+  if (L.total - excluidas.size < cfg.qtd) { $('genResults').innerHTML = `<div class="note">Você excluiu dezenas demais — sobram ${L.total - excluidas.size}, mas o jogo precisa de ${cfg.qtd}.</div>`; return; }
+  if (fixadas.size > cfg.qtd) { $('genResults').innerHTML = `<div class="note">Você fixou ${fixadas.size} dezenas, mas o jogo tem ${cfg.qtd}. Reduza as fixas ou aumente as dezenas por jogo.</div>`; return; }
   const count = Math.max(1, Math.min(20, parseInt($('genCount').value) || 1));
   let html = ''; const out = [];
   for (let i = 0; i < count; i++) {
@@ -677,7 +732,34 @@ function showTip(el) {
 document.querySelectorAll('[data-tip]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); if (curTrig === el) closeTip(); else showTip(el); }));
 document.addEventListener('click', closeTip);
 window.addEventListener('scroll', closeTip, true);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeHelp(); closeTip(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeHelp(); closeTip(); closeAbout(); } });
+
+// Instalar app (PWA)
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; showInstallBanner(); });
+function showInstallBanner() {
+  if (!deferredPrompt || matchMedia('(display-mode: standalone)').matches) return;
+  $('installBox').innerHTML = `<div class="banner"><span class="bi">📲</span><span class="bt" style="flex:1;">Instale o <b>Loto+Facil</b> no celular — abre rápido e funciona offline.</span><button class="btn" id="installGo" style="width:auto;padding:8px 15px;flex:none;">Instalar</button><button class="bx" id="installNo" title="Agora não">✕</button></div>`;
+  $('installGo').addEventListener('click', doInstall);
+  $('installNo').addEventListener('click', () => { $('installBox').innerHTML = ''; });
+}
+async function doInstall() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  try { await deferredPrompt.userChoice; } catch (e) {}
+  deferredPrompt = null; $('installBox').innerHTML = '';
+}
+window.addEventListener('appinstalled', () => { deferredPrompt = null; $('installBox').innerHTML = ''; });
+
+// Modal Sobre
+function openAbout() { $('aboutModal').style.display = 'flex'; document.body.style.overflow = 'hidden'; const ios = /iphone|ipad|ipod/i.test(navigator.userAgent); $('iosHint').style.display = (ios && !deferredPrompt) ? '' : 'none'; }
+function closeAbout() { $('aboutModal').style.display = 'none'; document.body.style.overflow = ''; }
+$('aboutBtn').addEventListener('click', openAbout);
+$('aboutClose').addEventListener('click', closeAbout);
+$('aboutModal').addEventListener('click', e => { if (e.target === $('aboutModal')) closeAbout(); });
+$('installBtn2').addEventListener('click', () => { if (deferredPrompt) doInstall(); else $('iosHint').style.display = ''; });
+$('shareApp').addEventListener('click', () => window.open('https://wa.me/?text=' + encodeURIComponent('🍀 Loto+Facil — análise e gerador de jogos das loterias da Caixa:\n' + APP_URL), '_blank'));
+$('copyLink').addEventListener('click', e => { if (navigator.clipboard) navigator.clipboard.writeText(APP_URL).then(() => { e.target.textContent = '✓ Copiado'; setTimeout(() => e.target.textContent = '🔗 Copiar link', 1500); }).catch(() => {}); });
 
 // Tema
 function applyTheme(t) { document.documentElement.setAttribute('data-theme', t); try { localStorage.setItem('lotomais-theme', t); } catch (e) {} }

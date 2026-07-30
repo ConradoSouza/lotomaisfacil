@@ -170,6 +170,8 @@
   .pcell{aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;
     font-size:15px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-soft);cursor:pointer;font-variant-numeric:tabular-nums;}
   .pcell.sel{background:radial-gradient(circle at 32% 28%,var(--violet-2),var(--violet));color:#fff;border-color:transparent;box-shadow:0 3px 8px rgba(90,50,200,.3);}
+  .pcell.fixa{background:radial-gradient(circle at 32% 28%,#4cd07d,var(--green));color:#fff;border-color:transparent;box-shadow:0 3px 8px rgba(20,140,70,.3);}
+  .pcell.excl{background:var(--surface-2);color:var(--red);border-color:var(--red);text-decoration:line-through;opacity:.75;}
 
   .result-line{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;}
   .result-line:last-child{border-bottom:none;}
@@ -273,6 +275,7 @@
     <h2 class="page">Painel</h2>
     <p class="sub" id="painelSub">Carregando…</p>
     <div id="autoConf"></div>
+    <div id="installBox"></div>
     <div class="cards" id="painelCards"></div>
     <section class="block">
       <h3>Último concurso <span class="hint" id="lastInfo"></span></h3>
@@ -350,6 +353,15 @@
       <h3>🔗 Duplas que mais saem juntas <span class="hint">todo o histórico</span></h3>
       <div class="card" id="afinList"></div>
     </section>
+    <section class="block">
+      <h3>📈 Evolução de uma dezena <button class="qbtn" data-tip="Quantas vezes a dezena saiu em cada bloco de concursos ao longo do tempo. Ajuda a ver se ela vem 'esquentando' ou 'esfriando' — lembrando que o sorteio é aleatório.">?</button></h3>
+      <div class="card">
+        <label class="field" style="max-width:200px;">Dezena
+          <select id="evoSel"></select>
+        </label>
+        <div id="evoChart"></div>
+      </div>
+    </section>
   </section>
 
   <!-- GERAR -->
@@ -372,6 +384,17 @@
         <span class="chip" data-preset="frias">Atrasadas</span>
         <span class="chip" data-preset="afinidade">Afinidade</span>
         <span class="chip" data-preset="aleatorio">Aleatório</span>
+      </div>
+    </section>
+
+    <section class="block">
+      <h3>Dezenas fixas / excluídas <span class="hint">opcional</span><button class="qbtn" data-tip="Toque numa dezena para alternar: <b>fixa</b> (verde, sempre entra), <b>excluída</b> (vermelha, nunca entra) ou neutra. Trave seus números da sorte ou tire os que não quer.">?</button></h3>
+      <div class="card">
+        <div class="picker" id="fixPicker" style="margin-bottom:10px;"></div>
+        <div class="legend" style="justify-content:center;">
+          <span class="li"><span class="dot" style="background:var(--green);"></span>fixa (sempre entra)</span>
+          <span class="li"><span class="dot" style="background:var(--red);"></span>excluída (nunca entra)</span>
+        </div>
       </div>
     </section>
 
@@ -543,7 +566,7 @@
     </section>
   </section>
 
-  <div class="footer-note">Loto+Facil · ferramenta estatística e educativa · não garante resultado · base até o concurso <span id="footN"></span></div>
+  <div class="footer-note">Loto+Facil · ferramenta estatística e educativa · não garante resultado · base até o concurso <span id="footN"></span><br><button id="aboutBtn" style="background:none;border:none;color:var(--violet);font-weight:700;cursor:pointer;font-family:inherit;font-size:12px;margin-top:6px;padding:4px;">Sobre o app</button></div>
 </main>
 
 <div id="helpModal" class="modal" style="display:none;">
@@ -608,6 +631,36 @@
       <div class="note" style="margin:20px 0 0;">
         <b>Importante:</b> as loterias são sorteios <b>aleatórios</b>. Nenhuma estatística, score ou estratégia prevê o próximo resultado. Este app é uma ferramenta de <b>estudo e diversão</b> — não garante prêmio.
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="aboutModal" class="modal" style="display:none;">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>Sobre o Loto+Facil</h2>
+      <button class="hbtn" id="aboutClose" title="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--ink-soft);margin:14px 0 0;">O <b>Loto+Facil</b> é um app gratuito de <b>análise estatística e geração de jogos</b> das loterias da Caixa. Funciona offline e pode ser instalado no seu celular.</p>
+      <div class="gloss-group">
+        <h3>Loterias</h3>
+        <div class="gloss"><span style="font-size:13px;color:var(--ink-soft);">Lotofácil · Mega-Sena · Quina · Lotomania · Dupla Sena · Dia de Sorte</span></div>
+      </div>
+
+      <button class="btn" id="installBtn2" style="margin-top:18px;">📲 Instalar o app no celular</button>
+      <div id="iosHint" class="note" style="display:none;margin-top:12px;">No iPhone: toque em <b>Compartilhar</b> (o quadrado com a seta) e depois em <b>"Adicionar à Tela de Início"</b>.</div>
+
+      <p class="sub" style="margin:18px 0 8px;">Gostou? Compartilhe:</p>
+      <div class="chips">
+        <button class="chip" id="shareApp" type="button">📱 WhatsApp</button>
+        <button class="chip" id="copyLink" type="button">🔗 Copiar link</button>
+      </div>
+
+      <div class="note" style="margin-top:18px;">
+        <b>Importante:</b> as loterias são sorteios <b>aleatórios</b>. Nenhuma estatística prevê o resultado. Este app é uma ferramenta de <b>estudo e diversão</b> — não garante prêmio. Jogue com responsabilidade.
+      </div>
+      <p style="text-align:center;color:var(--muted);font-size:12px;margin:16px 0 0;">lotomaisfacil.pages.dev · feito com 🍀</p>
     </div>
   </div>
 </div>
