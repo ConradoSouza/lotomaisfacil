@@ -135,6 +135,27 @@ function renderPainel() {
   $('coldList').innerHTML = cold.map(n => bar(pad(n), atraso[n], atraso[cold[0]] || 1, 'cold')).join('');
 
   renderAutoConf();
+  renderRaioX();
+}
+
+// Raio-X: como o último resultado se compara ao padrão histórico
+function renderRaioX() {
+  const last = DRAWS[N - 1][2], soma = last.reduce((a, b) => a + b, 0), pares = last.filter(n => n % 2 === 0).length;
+  const modePar = parHist.indexOf(Math.max(...parHist));
+  const rep = N > 1 ? last.filter(n => DRAWS[N - 2][2].includes(n)).length : 0;
+  const fc = faixaDefs.map(([a, b]) => last.filter(n => n >= a && n <= b).length);
+  const sorted = last.slice().sort((a, b) => a - b); let run = 1, maxRun = 1;
+  for (let i = 1; i < sorted.length; i++) { if (sorted[i] === sorted[i - 1] + 1) { run++; if (run > maxRun) maxRun = run; } else run = 1; }
+  const tag = (txt, warn) => `<span class="tagm" style="color:${warn ? 'var(--amber)' : 'var(--green)'};border-color:transparent;background:color-mix(in srgb,${warn ? 'var(--amber)' : 'var(--green)'} 14%,transparent);">${txt}</span>`;
+  const somaV = soma < somaAvg - somaSd ? tag('baixa', true) : soma > somaAvg + somaSd ? tag('alta', true) : tag('típica', false);
+  const lines = [
+    `<div class="result-line"><span class="k">Soma</span><span class="v">${soma} ${somaV} <span style="color:var(--muted);font-weight:400;">média ${somaAvg.toFixed(0)}</span></span></div>`,
+    `<div class="result-line"><span class="k">Pares / Ímpares</span><span class="v">${pares}P / ${K - pares}Í ${tag('+ comum: ' + modePar + 'P', Math.abs(pares - modePar) >= 2)}</span></div>`,
+  ];
+  if (N > 1) lines.push(`<div class="result-line"><span class="k">Repetiu do anterior</span><span class="v">${rep} dezena(s) <span style="color:var(--muted);font-weight:400;">média ${repMean.toFixed(1)}</span></span></div>`);
+  lines.push(`<div class="result-line"><span class="k">Faixas</span><span class="v">${fc.join('-')}</span></div>`);
+  lines.push(`<div class="result-line"><span class="k">Maior sequência</span><span class="v">${maxRun} dezena(s) seguida(s)</span></div>`);
+  $('raioX').innerHTML = lines.join('');
 }
 
 // Conferência automática: como os jogos salvos se saíram no último concurso
@@ -290,6 +311,22 @@ function generateOne(cfg) {
   let best = null, bestOk = -1;
   for (let t = 0; t < 300; t++) { const g = buildCandidate(cfg); const { active, ok } = fitScore(g, cfg); if (ok > bestOk) { bestOk = ok; best = g; } if (ok === active) return g; }
   return best;
+}
+// Geração rápida (surpresinha / por data)
+function hashStr(s) { let h = 1779033703 ^ s.length; for (let i = 0; i < s.length; i++) { h = Math.imul(h ^ s.charCodeAt(i), 3432918353); h = h << 13 | h >>> 19; } return h >>> 0; }
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function quickPick(count, seedStr) {
+  const rnd = seedStr ? mulberry32(hashStr(seedStr)) : Math.random;
+  const pool = NUMS.slice(), g = [];
+  for (let k = 0; k < count && pool.length; k++) g.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0]);
+  return g.sort((a, b) => a - b);
+}
+function renderOneGame(game, titulo) {
+  const m = gameMeta(game);
+  $('genResults').innerHTML = `<div class="game"><div class="ghead"><span class="gtitle">${titulo}</span><span class="tagm">Score médio <b>${m.avgScore.toFixed(0)}</b></span></div>
+    <div class="balls">${game.map(n => ball(n, 'sm')).join('')}</div>
+    <div class="gmeta"><span class="tagm">Soma <b>${m.soma}</b></span><span class="tagm">${m.pares}P / ${m.impares}I</span><span class="tagm">Faixas ${m.fc.join('-')}</span></div></div>`;
+  $('genResults').appendChild(exportBar(titulo + ' — ' + L.nome, [game], KEY + '-jogo'));
 }
 function gameMeta(game) {
   const pares = game.filter(n => n % 2 === 0).length;
@@ -458,40 +495,82 @@ function buildFixGrid() {
 }
 
 /* ================= Meus jogos ================= */
-let meusJogos = [];
-function meusKey() { return 'lotomais-jogos-' + KEY; }
-function loadMeus() { try { return JSON.parse(localStorage.getItem(meusKey()) || '[]'); } catch (e) { return []; } }
-function saveMeus() { try { localStorage.setItem(meusKey(), JSON.stringify(meusJogos)); } catch (e) {} }
+let meusJogos = []; // apostas da loteria ATUAL (usado para adicionar/salvar)
+function jogosKey(k) { return 'lotomais-jogos-' + k; }
+function loadMeusFor(k) { try { return JSON.parse(localStorage.getItem(jogosKey(k)) || '[]'); } catch (e) { return []; } }
+function saveMeusFor(k, arr) { try { localStorage.setItem(jogosKey(k), JSON.stringify(arr)); } catch (e) {} }
+function loadMeus() { return loadMeusFor(KEY); }
+function saveMeus() { saveMeusFor(KEY, meusJogos); }
 function addMeusGames(arr) {
-  const now = Date.now();
-  arr.forEach((nums, i) => meusJogos.push({ id: now + '-' + i + '-' + Math.random().toString(36).slice(2, 6), nums, created: now }));
+  const now = Date.now(), alvo = DRAWS[N - 1][0] + 1;
+  arr.forEach((nums, i) => meusJogos.push({ id: now + '-' + i + '-' + Math.random().toString(36).slice(2, 6), nums, created: now, alvo }));
   saveMeus(); renderMeus();
 }
-function deleteMeus(id) { meusJogos = meusJogos.filter(j => j.id !== id); saveMeus(); renderMeus(); }
-// desempenho no histórico inteiro: melhor resultado e quantas vezes teria premiado
-function histPerf(nums) {
-  const s = new Set(nums); let best = 0, wins = 0;
-  for (let i = 0; i < N; i++) { let h = 0; const d = DRAWS[i][2]; for (let k = 0; k < d.length; k++) if (s.has(d[k])) h++; if (h > best) best = h; if (ganhou(h)) wins++; }
-  return { best, wins, total: N };
+function deleteMeus(k, id) { saveMeusFor(k, loadMeusFor(k).filter(j => j.id !== id)); if (k === KEY) meusJogos = loadMeus(); renderMeus(); }
+// contexto de qualquer loteria (para exibir jogos de todas)
+function lotCtx(k) {
+  const draws = (window.LOTO_DB && window.LOTO_DB[k] ? window.LOTO_DB[k] : []).slice().sort((a, b) => a[0] - b[0]);
+  const last = draws[draws.length - 1];
+  return { k, cfg: LOTERIAS[k], draws, last, lastSet: new Set(last ? last[2] : []), prem: (window.LOTO_PREMIOS && window.LOTO_PREMIOS[k]) || null };
+}
+function histPerfCtx(nums, ctx) {
+  const s = new Set(nums); let best = 0, wins = 0; const D = ctx.draws;
+  for (let i = 0; i < D.length; i++) { let h = 0; const d = D[i][2]; for (let x = 0; x < d.length; x++) if (s.has(d[x])) h++; if (h > best) best = h; if (ctx.cfg.premios.includes(h)) wins++; }
+  return { best, wins, total: D.length };
 }
 function renderMeus() {
-  $('meusCount').textContent = meusJogos.length ? meusJogos.length + ' aposta(s)' : '';
-  if (!meusJogos.length) { $('meusList').innerHTML = `<div class="note">Nenhuma aposta salva ainda. Adicione acima, ou use o botão ⭐ nos jogos gerados.</div>`; return; }
-  const last = DRAWS[N - 1], lastS = new Set(last[2]);
-  $('meusList').innerHTML = meusJogos.slice().reverse().map(j => {
-    const hits = j.nums.filter(n => lastS.has(n)).length, win = ganhou(hits), pr = premioDe(hits);
+  const filtro = $('meusFiltro') ? $('meusFiltro').value : '';
+  const ordem = $('meusOrdem') ? $('meusOrdem').value : 'rec';
+  const showLot = filtro === 'todas';
+  const keys = filtro === 'todas' ? Object.keys(LOTERIAS) : [filtro || KEY];
+  let entries = [];
+  keys.forEach(k => { const ctx = lotCtx(k); if (!ctx.last) return; loadMeusFor(k).forEach(j => entries.push({ k, ctx, j })); });
+  $('meusCount').textContent = entries.length ? entries.length + ' aposta(s)' : '';
+  if (!entries.length) { $('meusList').innerHTML = `<div class="note">Nenhuma aposta ${filtro === 'todas' ? 'salva ainda' : 'para esta loteria'}. Adicione acima, ou use o botão ⭐ nos jogos gerados.</div>`; return; }
+  entries.forEach(e => { e.hits = e.j.nums.filter(n => e.ctx.lastSet.has(n)).length; e.win = e.ctx.cfg.premios.includes(e.hits); e.perf = histPerfCtx(e.j.nums, e.ctx); });
+  entries.sort(ordem === 'best' ? (a, b) => b.perf.best - a.perf.best || b.j.created - a.j.created : (a, b) => b.j.created - a.j.created);
+  $('meusList').innerHTML = entries.map(e => {
+    const { ctx, j, hits, win, perf } = e;
+    const pr = ctx.prem && ctx.prem.premios ? ctx.prem.premios[hits] : null;
     const premioTxt = win && pr && pr[1] > 0 ? ' · ~' + moneyShort(pr[0]) : '';
     const dt = new Date(j.created).toLocaleDateString('pt-BR');
-    const perf = histPerf(j.nums);
-    const perfTxt = perf.wins ? `melhor <b>${perf.best}</b> · premiaria <b>${perf.wins}×</b> em ${perf.total.toLocaleString('pt-BR')} concursos` : `melhor <b>${perf.best}</b> · nunca premiaria em ${perf.total.toLocaleString('pt-BR')} concursos`;
+    const perfTxt = perf.wins ? `melhor <b>${perf.best}</b> · premiaria <b>${perf.wins}×</b> em ${perf.total.toLocaleString('pt-BR')}` : `melhor <b>${perf.best}</b> · nunca premiou em ${perf.total.toLocaleString('pt-BR')}`;
+    const lotLabel = showLot ? `<span class="tagm" style="background:color-mix(in srgb,var(--violet) 14%,transparent);color:var(--violet);border-color:transparent;">${ctx.cfg.nome}</span>` : '';
+    const alvoTxt = j.alvo ? ` · 🎯 #${j.alvo}` : '';
     return `<div class="game">
-      <div class="ghead"><span class="gtitle">${j.nums.length} dezenas · ${dt}</span><span style="display:flex;gap:6px;"><button class="chip" data-wa="${j.nums.join(',')}" type="button" style="padding:4px 10px;" title="Compartilhar no WhatsApp">📱</button><button class="chip" data-del="${j.id}" type="button" style="padding:4px 11px;">✕</button></span></div>
-      <div class="balls">${j.nums.map(n => ball(n, lastS.has(n) ? 'sm gold' : 'sm')).join('')}</div>
-      <div class="gmeta"><span class="tagm" style="${win ? 'background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);border-color:transparent;' : ''}">Concurso #${last[0]}: <b>${hits}</b> acertos${win ? ' 🏆' + premioTxt : ''}</span><span class="tagm">${perfTxt}</span></div>
+      <div class="ghead"><span class="gtitle">${j.nums.length} dezenas · ${dt}${alvoTxt}</span><span style="display:flex;gap:6px;"><button class="chip" data-wa="${e.k}|${j.nums.join(',')}" type="button" style="padding:4px 10px;" title="Compartilhar no WhatsApp">📱</button><button class="chip" data-del="${e.k}|${j.id}" type="button" style="padding:4px 11px;">✕</button></span></div>
+      <div class="balls">${j.nums.map(n => ball(n, ctx.lastSet.has(n) ? 'sm gold' : 'sm')).join('')}</div>
+      <div class="gmeta">${lotLabel}<span class="tagm" style="${win ? 'background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);border-color:transparent;' : ''}">#${ctx.last[0]}: <b>${hits}</b> acertos${win ? ' 🏆' + premioTxt : ''}</span><span class="tagm">${perfTxt}</span></div>
     </div>`;
   }).join('');
-  $('meusList').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => deleteMeus(b.dataset.del)));
-  $('meusList').querySelectorAll('[data-wa]').forEach(b => b.addEventListener('click', () => shareWhatsApp('Meu jogo da ' + L.nome, [b.dataset.wa.split(',').map(Number)])));
+  $('meusList').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.del.split('|'); deleteMeus(p[0], p[1]); }));
+  $('meusList').querySelectorAll('[data-wa]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.wa.split('|'); shareWhatsApp('Meu jogo da ' + LOTERIAS[p[0]].nome, [p[1].split(',').map(Number)]); }));
+}
+// Backup: exportar/importar todas as apostas
+function exportBackup() {
+  const data = {}; Object.keys(LOTERIAS).forEach(k => { const arr = loadMeusFor(k); if (arr.length) data[k] = arr; });
+  const blob = new Blob([JSON.stringify({ app: 'loto+facil', v: 1, jogos: data }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = 'loto-mais-facil-backup.json'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function importBackup(ev) {
+  const file = ev.target.files[0]; if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const jogos = (JSON.parse(rd.result) || {}).jogos || {}; let add = 0;
+      Object.keys(jogos).forEach(k => {
+        if (!LOTERIAS[k] || !Array.isArray(jogos[k])) return;
+        const cur = loadMeusFor(k), ids = new Set(cur.map(j => j.id));
+        jogos[k].forEach(j => { if (j && Array.isArray(j.nums) && !ids.has(j.id)) { cur.push(j); add++; } });
+        saveMeusFor(k, cur);
+      });
+      meusJogos = loadMeus(); renderMeus();
+      alert(add ? add + ' aposta(s) importada(s)!' : 'Nada novo para importar.');
+    } catch (e) { alert('Arquivo de backup inválido.'); }
+  };
+  rd.readAsText(file); ev.target.value = '';
 }
 
 /* ================= Trocar de loteria ================= */
@@ -515,6 +594,7 @@ function buildLottery(key) {
   $('fechGar').innerHTML = garVals.map(p => `<option value="${p}">${p === K ? 'Completo (todos os jogos)' : p + (L.total <= 25 ? ' pontos' : ' acertos')}</option>`).join('');
   const hottest = [...NUMS].sort((a, b) => freqAll[b] - freqAll[a])[0];
   $('evoSel').innerHTML = options(NUMS, hottest, pad);
+  $('meusFiltro').innerHTML = `<option value="">Esta loteria (${L.nome})</option><option value="todas">Todas as loterias</option>` + Object.keys(LOTERIAS).map(k => `<option value="${k}">${LOTERIAS[k].nome}</option>`).join('');
 
   // pickers
   buildPicker($('picker'), selConferir, () => L.apostaMax, conferirMsg);
@@ -584,6 +664,8 @@ $('genBtn').addEventListener('click', () => {
 });
 
 $('gerToggle').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { $('gerToggle').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); const f = b.dataset.mode === 'fechamento'; $('genMode').style.display = f ? 'none' : ''; $('fechMode').style.display = f ? '' : 'none'; }));
+$('surpresinha').addEventListener('click', () => renderOneGame(quickPick(L.apostaMin, null), '🎲 Surpresinha'));
+$('dataBtn').addEventListener('click', () => { const d = ($('dataSorte').value || '').trim(); if (!d) { $('genResults').innerHTML = '<div class="note">Digite uma data (ex.: 15/03/1990).</div>'; return; } renderOneGame(quickPick(L.apostaMin, KEY + '|' + d), '🍀 Números de ' + d); });
 $('fechBtn').addEventListener('click', () => {
   if (selFech.size < K + 1) { $('fechResult').innerHTML = `<div class="note">Selecione de ${K + 1} a ${L.fechMax} dezenas.</div>`; return; }
   const pool = [...selFech].sort((a, b) => a - b), P = parseInt($('fechGar').value), price = parseFloat($('fechPrice').value) || 0;
@@ -668,6 +750,11 @@ $('clearBtn').addEventListener('click', () => { selConferir.clear(); $('picker')
 // Meus jogos
 $('meusClear').addEventListener('click', () => { selMeus.clear(); $('meusPicker').querySelectorAll('.pcell').forEach(c => c.classList.remove('sel')); meusMsg(); });
 $('meusAdd').addEventListener('click', () => { if (selMeus.size < L.apostaMin || selMeus.size > L.apostaMax) { $('meusPickMsg').textContent = `Escolha de ${L.apostaMin} a ${L.apostaMax} dezenas.`; return; } addMeusGames([[...selMeus].sort((a, b) => a - b)]); selMeus.clear(); $('meusPicker').querySelectorAll('.pcell').forEach(c => c.classList.remove('sel')); meusMsg(); });
+$('meusFiltro').addEventListener('change', renderMeus);
+$('meusOrdem').addEventListener('change', renderMeus);
+$('meusExport').addEventListener('click', exportBackup);
+$('meusImport').addEventListener('click', () => $('meusImportFile').click());
+$('meusImportFile').addEventListener('change', importBackup);
 
 // Buscar concurso
 function buscarConcurso() {

@@ -286,6 +286,10 @@
       <div class="card" id="painelPremios"></div>
     </section>
     <section class="block">
+      <h3>🔬 Raio-X do último concurso <button class="qbtn" data-tip="Como o último resultado se compara ao 'normal' do histórico: soma, pares/ímpares, quantas dezenas repetiram do concurso anterior, distribuição por faixas e sequências.">?</button></h3>
+      <div class="card" id="raioX"></div>
+    </section>
+    <section class="block">
       <h3>🔎 Ver outro concurso</h3>
       <div class="card">
         <div style="display:flex;gap:8px;align-items:stretch;">
@@ -374,6 +378,17 @@
 
     <div id="genMode">
     <p class="sub">Escolha uma estratégia pronta ou ajuste os filtros do seu jeito. O app monta jogos que respeitam seus critérios.</p>
+
+    <section class="block">
+      <h3>⚡ Geração rápida <button class="qbtn" data-tip="Surpresinha: um jogo aleatório num toque. Da data: gera um jogo a partir de uma data (ex.: seu aniversário) — a mesma data sempre gera o mesmo jogo. É só diversão; não muda a chance.">?</button></h3>
+      <div class="card">
+        <button class="chip" id="surpresinha" type="button" style="font-size:14px;padding:9px 16px;">🎲 Surpresinha</button>
+        <div style="display:flex;gap:8px;align-items:stretch;margin-top:12px;">
+          <input type="text" inputmode="numeric" id="dataSorte" placeholder="sua data (dd/mm/aaaa)" style="flex:1;max-width:230px;margin-top:0;">
+          <button class="btn" id="dataBtn" style="width:auto;padding:11px 16px;">🍀 Da data</button>
+        </div>
+      </div>
+    </section>
 
     <section class="block">
       <h3>Estratégias prontas <span class="hint">um toque configura os filtros</span></h3>
@@ -562,6 +577,17 @@
     </section>
     <section class="block">
       <h3>Apostas salvas <span class="hint" id="meusCount"></span></h3>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="row2">
+          <label class="field">Mostrar<select id="meusFiltro"></select></label>
+          <label class="field">Ordenar<select id="meusOrdem"><option value="rec">Mais recentes</option><option value="best">Melhor no histórico</option></select></label>
+        </div>
+        <div class="chips">
+          <button class="chip" id="meusExport" type="button">💾 Exportar backup</button>
+          <button class="chip" id="meusImport" type="button">📂 Importar backup</button>
+          <input type="file" id="meusImportFile" accept="application/json,.json" style="display:none;">
+        </div>
+      </div>
       <div id="meusList"></div>
     </section>
   </section>
