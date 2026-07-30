@@ -1,8 +1,7 @@
 /* Loto+Facil — service worker (cache offline) */
-const CACHE = 'lotomais-v16';
+const CACHE = 'lotomais-v17';
 const ASSETS = [
   './',
-  './index.html',
   './app.js',
   './dados/lotofacil.js',
   './dados/megasena.js',
@@ -28,10 +27,20 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+
+  // Navegação (abrir o app): rede primeiro, cai para o índice em cache (offline).
+  // Evita servir respostas redirecionadas do cache, que quebram o app instalado.
+  if (e.request.mode === 'navigate') {
+    e.respondWith(fetch(e.request).catch(() => caches.match('./')));
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
-      const copy = res.clone();
-      caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+      if (res && res.status === 200 && res.type === 'basic' && !res.redirected) {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+      }
       return res;
     }).catch(() => hit))
   );
