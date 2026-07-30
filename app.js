@@ -233,12 +233,15 @@ function renderPadroes() {
 }
 function renderEvo() {
   const n = parseInt($('evoSel').value) || NUMS[0];
-  const nblocks = Math.min(18, N), size = Math.ceil(N / nblocks), items = [];
+  // tamanho de bloco "redondo" que gere ~12-16 barras
+  const size = [50, 100, 200, 250, 500, 1000, 2000].find(s => Math.ceil(N / s) <= 16) || Math.ceil(N / 16);
+  const items = [];
   for (let start = 0; start < N; start += size) {
     const end = Math.min(N, start + size); let c = 0;
     for (let i = start; i < end; i++) if (DRAWS[i][2].indexOf(n) !== -1) c++;
-    items.push({ label: '#' + DRAWS[start][0], val: c, suffix: c + '/' + (end - start) });
+    items.push({ label: DRAWS[start][0] + '–' + DRAWS[end - 1][0], val: c, suffix: c + '×' });
   }
+  $('evoDesc').innerHTML = `Cada barra é um bloco de <b>${size} concursos</b>. À esquerda, a faixa de concursos; à direita, quantas vezes a dezena <b>${pad(n)}</b> saiu ali (a mais alta em dourado).`;
   $('evoChart').innerHTML = barsRanked(items);
 }
 
