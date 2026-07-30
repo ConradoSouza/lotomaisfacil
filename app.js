@@ -15,7 +15,11 @@ const LOTERIAS = {
 /* ================= Estado (recalculado por loteria) ================= */
 let L, KEY, DRAWS, N, NUMS, K, EVENS;
 let freqAll, atraso, maxAtraso, repHist, repCount, repMean, parHist, somas, somaMin, somaMax, somaAvg, somaSd;
-let faixaDefs, faixaTot, co, afinStrength, score, lastDraw, lastSet;
+let faixaDefs, faixaTot, co, afinStrength, score, lastDraw, lastSet, premiosRef;
+function money(v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+function moneyShort(v) { v = v || 0; if (v >= 1e6) return 'R$ ' + (v / 1e6).toFixed(1).replace('.', ',') + ' mi'; if (v >= 1e3) return 'R$ ' + (v / 1e3).toFixed(1).replace('.', ',') + ' mil'; return money(v); }
+function premioDe(hits) { return premiosRef && premiosRef.premios && premiosRef.premios[hits]; } // [valor, ganhadores] ou undefined
+function ganhou(hits) { return L.premios.includes(hits); } // faixa premiada? (Lotomania: 0 ou 15-20)
 
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, '0');
@@ -115,10 +119,44 @@ function renderPainel() {
   $('lastInfo').textContent = `#${last[0]} · ${last[1]}`;
   $('lastBalls').innerHTML = last[2].map(n => ball(n)).join('');
 
+  // prêmios do último concurso
+  if (premiosRef && premiosRef.premios && Object.keys(premiosRef.premios).length) {
+    $('premiosBlock').style.display = '';
+    $('painelPremios').innerHTML = L.premios.map(h => {
+      const p = premiosRef.premios[h]; if (!p) return '';
+      const venceu = p[1] > 0;
+      return `<div class="result-line"><span class="k">${h} acertos</span><span class="v">${venceu ? money(p[0]) + ' <span style="color:var(--muted);font-weight:400;">· ' + p[1].toLocaleString('pt-BR') + ' ganhador(es)</span>' : '<span style="color:var(--amber);">Acumulou</span>'}</span></div>`;
+    }).join('');
+  } else { $('premiosBlock').style.display = 'none'; }
+
   const hot = [...NUMS].sort((a, b) => freqAll[b] - freqAll[a]).slice(0, 10);
   $('hotList').innerHTML = hot.map(n => bar(pad(n), freqAll[n], freqAll[hot[0]], 'hot')).join('');
   const cold = [...NUMS].sort((a, b) => atraso[b] - atraso[a]).slice(0, 10);
   $('coldList').innerHTML = cold.map(n => bar(pad(n), atraso[n], atraso[cold[0]] || 1, 'cold')).join('');
+
+  renderAutoConf();
+}
+
+// Conferência automática: como os jogos salvos se saíram no último concurso
+function renderAutoConf() {
+  const box = $('autoConf');
+  if (!meusJogos.length) { box.innerHTML = ''; return; }
+  const last = DRAWS[N - 1], lastS = new Set(last[2]);
+  let best = 0, wins = 0, bestPremio = 0;
+  meusJogos.forEach(j => {
+    const h = j.nums.filter(n => lastS.has(n)).length;
+    if (h > best) best = h;
+    if (ganhou(h)) { wins++; const pr = premioDe(h); if (pr && pr[0] > bestPremio) bestPremio = pr[0]; }
+  });
+  let stored; try { stored = parseInt(localStorage.getItem('lotomais-visto-' + KEY)); } catch (e) {}
+  const isNew = stored && last[0] > stored, win = wins > 0;
+  const badge = isNew ? '<span class="badge-new">novo</span>' : '';
+  const txt = win
+    ? `${badge}<b>🎉 Você ganhou!</b> No concurso <b>#${last[0]}</b>, ${wins} jogo(s) premiado(s) — melhor: <b>${best} acertos</b>${bestPremio > 0 ? ' (~' + moneyShort(bestPremio) + ')' : ''}.`
+    : `${badge}No concurso <b>#${last[0]}</b>, seu melhor jogo fez <b>${best} acerto(s)</b>. Boa sorte no próximo! 🍀`;
+  box.innerHTML = `<div class="banner ${win ? 'win' : ''}"><span class="bi">${win ? '🏆' : '🍀'}</span><span class="bt">${txt}</span><button class="bx" title="Fechar">✕</button></div>`;
+  box.querySelector('.bx').addEventListener('click', () => { box.innerHTML = ''; });
+  try { localStorage.setItem('lotomais-visto-' + KEY, last[0]); } catch (e) {}
 }
 
 /* ================= Dezenas (Score) ================= */
@@ -261,10 +299,19 @@ function printGames(title, games) {
     <button onclick="window.print()">Imprimir / Salvar PDF</button></body></html>`);
   w.document.close();
 }
+const APP_URL = 'https://lotomaisfacil.pages.dev/';
+function waText(title, games) {
+  const linhas = games.map((g, i) => (games.length > 1 ? 'Jogo ' + (i + 1) + ': ' : '') + g.map(pad).join(' '));
+  return `🍀 ${title}\n\n${linhas.join('\n')}\n\nGerado no Loto+Facil:\n${APP_URL}`;
+}
+function shareWhatsApp(title, games) {
+  window.open('https://wa.me/?text=' + encodeURIComponent(waText(title, games)), '_blank');
+}
 function exportBar(title, games, baseName) {
   const bar = document.createElement('div'); bar.className = 'chips'; bar.style.marginTop = '12px';
   const mk = (txt, fn) => { const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = txt; b.addEventListener('click', () => fn(b)); return b; };
   bar.append(
+    mk('📱 WhatsApp', () => shareWhatsApp(title, games)),
     mk('⬇ Baixar CSV', () => downloadCSV(baseName + '.csv', gamesToCSV(games))),
     mk('🖨 PDF / Imprimir', () => printGames(title, games)),
     mk('⭐ Salvar em Meus jogos', b => { addMeusGames(games.map(g => g.slice())); b.textContent = '✓ Salvos'; })
@@ -383,17 +430,19 @@ function deleteMeus(id) { meusJogos = meusJogos.filter(j => j.id !== id); saveMe
 function renderMeus() {
   $('meusCount').textContent = meusJogos.length ? meusJogos.length + ' aposta(s)' : '';
   if (!meusJogos.length) { $('meusList').innerHTML = `<div class="note">Nenhuma aposta salva ainda. Adicione acima, ou use o botão ⭐ nos jogos gerados.</div>`; return; }
-  const last = DRAWS[N - 1], lastS = new Set(last[2]), minPremio = L.premios[L.premios.length - 1];
+  const last = DRAWS[N - 1], lastS = new Set(last[2]);
   $('meusList').innerHTML = meusJogos.slice().reverse().map(j => {
-    const hits = j.nums.filter(n => lastS.has(n)).length, win = hits >= minPremio;
+    const hits = j.nums.filter(n => lastS.has(n)).length, win = ganhou(hits), pr = premioDe(hits);
+    const premioTxt = win && pr && pr[1] > 0 ? ' · ~' + moneyShort(pr[0]) : '';
     const dt = new Date(j.created).toLocaleDateString('pt-BR');
     return `<div class="game">
-      <div class="ghead"><span class="gtitle">${j.nums.length} dezenas · ${dt}</span><button class="chip" data-del="${j.id}" type="button" style="padding:4px 11px;">✕</button></div>
+      <div class="ghead"><span class="gtitle">${j.nums.length} dezenas · ${dt}</span><span style="display:flex;gap:6px;"><button class="chip" data-wa="${j.nums.join(',')}" type="button" style="padding:4px 10px;" title="Compartilhar no WhatsApp">📱</button><button class="chip" data-del="${j.id}" type="button" style="padding:4px 11px;">✕</button></span></div>
       <div class="balls">${j.nums.map(n => ball(n, lastS.has(n) ? 'sm gold' : 'sm')).join('')}</div>
-      <div class="gmeta"><span class="tagm" style="${win ? 'background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);border-color:transparent;' : ''}">Concurso #${last[0]}: <b>${hits}</b> acertos${win ? ' 🏆' : ''}</span></div>
+      <div class="gmeta"><span class="tagm" style="${win ? 'background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);border-color:transparent;' : ''}">Concurso #${last[0]}: <b>${hits}</b> acertos${win ? ' 🏆' + premioTxt : ''}</span></div>
     </div>`;
   }).join('');
   $('meusList').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => deleteMeus(b.dataset.del)));
+  $('meusList').querySelectorAll('[data-wa]').forEach(b => b.addEventListener('click', () => shareWhatsApp('Meu jogo da ' + L.nome, [b.dataset.wa.split(',').map(Number)])));
 }
 
 /* ================= Trocar de loteria ================= */
@@ -405,6 +454,7 @@ function buildLottery(key) {
   EVENS = NUMS.filter(n => n % 2 === 0).length;
   document.documentElement.style.setProperty('--violet', L.cor);
   document.documentElement.style.setProperty('--violet-2', L.cor2);
+  premiosRef = (window.LOTO_PREMIOS && window.LOTO_PREMIOS[key]) || null;
 
   computeStats();
 
@@ -549,11 +599,12 @@ $('checkBtn').addEventListener('click', () => {
   DRAWS.forEach(d => { const h = d[2].filter(n => chosen.has(n)).length; hits[h]++; if (h > best) { best = h; bestDraw = d; } });
   const last = DRAWS[N - 1], lastHits = last[2].filter(n => chosen.has(n)).length;
   const arr = [...chosen].sort((a, b) => a - b), soma = arr.reduce((a, b) => a + b, 0), pares = arr.filter(n => n % 2 === 0).length;
-  let grid = ''; L.premios.forEach(h => grid += `<div class="hitbox"><div class="hn">${hits[h] || 0}</div><div class="hl">${h} acertos<br>${((hits[h] || 0) / N * 100).toFixed(2)}%</div></div>`);
+  let grid = ''; L.premios.forEach(h => { const pr = premioDe(h); grid += `<div class="hitbox"><div class="hn">${hits[h] || 0}</div><div class="hl">${h} acertos<br>${((hits[h] || 0) / N * 100).toFixed(2)}%${pr && pr[1] > 0 ? '<br><span style="color:var(--green);font-weight:700;">~' + moneyShort(pr[0]) + '</span>' : ''}</div></div>`; });
+  const lp = premioDe(lastHits);
   $('checkResults').innerHTML = `<div class="card">
     <div class="result-line"><span class="k">Dezenas</span><span class="v">${arr.map(pad).join(' ')}</span></div>
     <div class="result-line"><span class="k">Soma / Pares</span><span class="v">${soma} · ${pares}P/${arr.length - pares}I</span></div>
-    <div class="result-line"><span class="k">No último concurso (#${last[0]})</span><span class="v">${lastHits} acertos</span></div>
+    <div class="result-line"><span class="k">No último concurso (#${last[0]})</span><span class="v">${lastHits} acertos${lp && lp[1] > 0 ? ' · pagaria ~' + moneyShort(lp[0]) : ''}</span></div>
     <div class="result-line"><span class="k">Melhor da história</span><span class="v">${best} acertos · #${bestDraw[0]} (${bestDraw[1]})</span></div>
     <h3 style="margin:14px 0 4px;font-size:14px;">Distribuição em ${N} concursos</h3><div class="hitgrid">${grid}</div></div>`;
 });
@@ -562,6 +613,31 @@ $('clearBtn').addEventListener('click', () => { selConferir.clear(); $('picker')
 // Meus jogos
 $('meusClear').addEventListener('click', () => { selMeus.clear(); $('meusPicker').querySelectorAll('.pcell').forEach(c => c.classList.remove('sel')); meusMsg(); });
 $('meusAdd').addEventListener('click', () => { if (selMeus.size < L.apostaMin || selMeus.size > L.apostaMax) { $('meusPickMsg').textContent = `Escolha de ${L.apostaMin} a ${L.apostaMax} dezenas.`; return; } addMeusGames([[...selMeus].sort((a, b) => a - b)]); selMeus.clear(); $('meusPicker').querySelectorAll('.pcell').forEach(c => c.classList.remove('sel')); meusMsg(); });
+
+// Buscar concurso
+function buscarConcurso() {
+  const n = parseInt($('buscaConc').value);
+  if (!n) { $('buscaResult').innerHTML = ''; return; }
+  const found = DRAWS.filter(d => d[0] === n);
+  if (!found.length) { $('buscaResult').innerHTML = `<div class="note">Concurso #${n} não encontrado. A base vai de #${DRAWS[0][0]} a #${DRAWS[N - 1][0]}.</div>`; return; }
+  $('buscaResult').innerHTML = found.map((d, i) =>
+    `<div style="margin-bottom:${found.length > 1 ? 10 : 0}px;"><p class="sub" style="margin:0 0 6px;">Concurso #${d[0]} · ${d[1]}${found.length > 1 ? ' · ' + (i + 1) + 'º sorteio' : ''}</p><div class="balls">${d[2].map(x => ball(x, 'sm')).join('')}</div></div>`
+  ).join('');
+}
+$('buscaBtn').addEventListener('click', buscarConcurso);
+$('buscaConc').addEventListener('keydown', e => { if (e.key === 'Enter') buscarConcurso(); });
+
+// Aviso de nova versão do app (service worker)
+function showUpdateBanner() {
+  if (document.getElementById('updToast')) return;
+  const t = document.createElement('div'); t.id = 'updToast';
+  t.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom));z-index:300;background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 10px 34px rgba(0,0,0,.35);display:flex;align-items:center;gap:12px;';
+  t.append('🔄 Nova versão disponível');
+  const b = document.createElement('button'); b.textContent = 'Atualizar';
+  b.style.cssText = 'background:var(--violet);color:#fff;border:none;border-radius:8px;padding:6px 13px;font-weight:700;cursor:pointer;font-family:inherit;';
+  b.onclick = () => location.reload(); t.appendChild(b);
+  document.body.appendChild(t);
+}
 
 // Abas
 $('tabbar').querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
@@ -615,4 +691,8 @@ $('themeBtn').addEventListener('click', () => { const cur = document.documentEle
   buildLottery(key);
 })();
 
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+if ('serviceWorker' in navigator) {
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) showUpdateBanner(); });
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}

@@ -197,6 +197,17 @@
 
   .footer-note{color:var(--muted);font-size:11.5px;text-align:center;margin-top:26px;line-height:1.5;}
 
+  /* Banner de conferência automática */
+  .banner{background:linear-gradient(135deg,color-mix(in srgb,var(--violet) 12%,var(--surface)),var(--surface));
+    border:1px solid var(--line);border-left:4px solid var(--violet);border-radius:14px;padding:12px 15px;margin-bottom:16px;
+    display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);animation:fade .3s ease;}
+  .banner.win{border-left-color:var(--green);background:linear-gradient(135deg,color-mix(in srgb,var(--green) 15%,var(--surface)),var(--surface));}
+  .banner .bi{font-size:23px;flex:none;line-height:1;}
+  .banner .bt{font-size:13.5px;line-height:1.42;color:var(--ink-soft);}
+  .banner .bt b{color:var(--ink);}
+  .banner .bx{margin-left:auto;background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;flex:none;padding:4px;}
+  .badge-new{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#fff;background:var(--violet);border-radius:20px;padding:2px 8px;margin-right:6px;vertical-align:middle;}
+
   /* Botão "?" de ajuda contextual */
   .qbtn{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;
     border:1px solid var(--line);background:var(--surface-2);color:var(--violet);font-size:11px;font-weight:800;
@@ -261,10 +272,25 @@
   <section id="tab-painel" class="tab active">
     <h2 class="page">Painel</h2>
     <p class="sub" id="painelSub">Carregando…</p>
+    <div id="autoConf"></div>
     <div class="cards" id="painelCards"></div>
     <section class="block">
       <h3>Último concurso <span class="hint" id="lastInfo"></span></h3>
       <div class="card"><div class="balls" id="lastBalls"></div></div>
+    </section>
+    <section class="block" id="premiosBlock" style="display:none;">
+      <h3>💰 Prêmios do último concurso <button class="qbtn" data-tip="Quanto cada faixa de acertos pagou no último concurso, e quantas pessoas ganharam. 'Acumulou' = ninguém acertou aquela faixa.">?</button></h3>
+      <div class="card" id="painelPremios"></div>
+    </section>
+    <section class="block">
+      <h3>🔎 Ver outro concurso</h3>
+      <div class="card">
+        <div style="display:flex;gap:8px;align-items:stretch;">
+          <input type="number" id="buscaConc" placeholder="nº do concurso" style="flex:1;max-width:200px;margin-top:0;">
+          <button class="btn" id="buscaBtn" style="width:auto;padding:11px 20px;">Ver</button>
+        </div>
+        <div id="buscaResult" style="margin-top:12px;"></div>
+      </div>
     </section>
     <div class="grid2">
       <section class="block">
