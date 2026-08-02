@@ -374,11 +374,24 @@ function shareWhatsApp(title, games) {
 function exportBar(title, games, baseName) {
   const bar = document.createElement('div'); bar.className = 'chips'; bar.style.marginTop = '12px';
   const mk = (txt, fn) => { const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = txt; b.addEventListener('click', () => fn(b)); return b; };
+  const salvar = mk('⭐ Salvar em Meus jogos', () => {
+    if (bar.querySelector('.saveform') || salvar.disabled) return;
+    const form = document.createElement('div'); form.className = 'saveform';
+    form.style.cssText = 'display:flex;gap:6px;margin-top:8px;flex-basis:100%;width:100%;';
+    const inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = 40;
+    inp.placeholder = games.length > 1 ? 'nome do carrinho (opcional)' : 'nome do jogo (opcional)';
+    inp.style.cssText = 'flex:1;margin-top:0;';
+    const ok = document.createElement('button'); ok.className = 'btn'; ok.type = 'button'; ok.textContent = 'Salvar'; ok.style.cssText = 'width:auto;padding:8px 14px;flex:none;';
+    const doSave = () => { addMeusGames(games.map(g => g.slice()), inp.value.trim()); salvar.textContent = '✓ Salvos'; salvar.disabled = true; form.remove(); };
+    ok.addEventListener('click', doSave);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
+    form.append(inp, ok); bar.appendChild(form); inp.focus();
+  });
   bar.append(
     mk('📱 WhatsApp', () => shareWhatsApp(title, games)),
     mk('⬇ Baixar CSV', () => downloadCSV(baseName + '.csv', gamesToCSV(games))),
     mk('🖨 PDF / Imprimir', () => printGames(title, games)),
-    mk('⭐ Salvar em Meus jogos', b => { addMeusGames(games.map(g => g.slice())); b.textContent = '✓ Salvos'; })
+    salvar
   );
   return bar;
 }
@@ -504,12 +517,17 @@ function loadMeusFor(k) { try { return JSON.parse(localStorage.getItem(jogosKey(
 function saveMeusFor(k, arr) { try { localStorage.setItem(jogosKey(k), JSON.stringify(arr)); } catch (e) {} }
 function loadMeus() { return loadMeusFor(KEY); }
 function saveMeus() { saveMeusFor(KEY, meusJogos); }
-function addMeusGames(arr) {
-  const now = Date.now(), alvo = DRAWS[N - 1][0] + 1;
-  arr.forEach((nums, i) => meusJogos.push({ id: now + '-' + i + '-' + Math.random().toString(36).slice(2, 6), nums, created: now, alvo }));
+function addMeusGames(arr, nome) {
+  const now = Date.now(), alvo = DRAWS[N - 1][0] + 1, cart = 'c' + now;
+  arr.forEach((nums, i) => meusJogos.push({ id: now + '-' + i + '-' + Math.random().toString(36).slice(2, 6), nums, created: now, alvo, cart, nome: nome || '' }));
   saveMeus(); renderMeus();
 }
-function deleteMeus(k, id) { saveMeusFor(k, loadMeusFor(k).filter(j => j.id !== id)); if (k === KEY) meusJogos = loadMeus(); renderMeus(); }
+function deleteCart(k, cartKey) { saveMeusFor(k, loadMeusFor(k).filter(j => (j.cart || j.id) !== cartKey)); if (k === KEY) meusJogos = loadMeus(); renderMeus(); }
+function shareCart(k, cartKey) {
+  const grp = loadMeusFor(k).filter(j => (j.cart || j.id) === cartKey);
+  const nome = (grp[0] && grp[0].nome) || 'Meus jogos';
+  shareWhatsApp(nome + ' — ' + LOTERIAS[k].nome, grp.map(j => j.nums));
+}
 // contexto de qualquer loteria (para exibir jogos de todas)
 function lotCtx(k) {
   const draws = (window.LOTO_DB && window.LOTO_DB[k] ? window.LOTO_DB[k] : []).slice().sort((a, b) => a[0] - b[0]);
@@ -526,28 +544,43 @@ function renderMeus() {
   const ordem = $('meusOrdem') ? $('meusOrdem').value : 'rec';
   const showLot = filtro === 'todas';
   const keys = filtro === 'todas' ? Object.keys(LOTERIAS) : [filtro || KEY];
-  let entries = [];
-  keys.forEach(k => { const ctx = lotCtx(k); if (!ctx.last) return; loadMeusFor(k).forEach(j => entries.push({ k, ctx, j })); });
-  $('meusCount').textContent = entries.length ? entries.length + ' aposta(s)' : '';
-  if (!entries.length) { $('meusList').innerHTML = `<div class="note">Nenhuma aposta ${filtro === 'todas' ? 'salva ainda' : 'para esta loteria'}. Adicione acima, ou use o botão ⭐ nos jogos gerados.</div>`; return; }
-  entries.forEach(e => { e.hits = e.j.nums.filter(n => e.ctx.lastSet.has(n)).length; e.win = e.ctx.cfg.premios.includes(e.hits); e.perf = histPerfCtx(e.j.nums, e.ctx); });
-  entries.sort(ordem === 'best' ? (a, b) => b.perf.best - a.perf.best || b.j.created - a.j.created : (a, b) => b.j.created - a.j.created);
-  $('meusList').innerHTML = entries.map(e => {
-    const { ctx, j, hits, win, perf } = e;
-    const pr = ctx.prem && ctx.prem.premios ? ctx.prem.premios[hits] : null;
-    const premioTxt = win && pr && pr[1] > 0 ? ' · ~' + moneyShort(pr[0]) : '';
-    const dt = new Date(j.created).toLocaleDateString('pt-BR');
-    const perfTxt = perf.wins ? `melhor <b>${perf.best}</b> · premiaria <b>${perf.wins}×</b> em ${perf.total.toLocaleString('pt-BR')}` : `melhor <b>${perf.best}</b> · nunca premiou em ${perf.total.toLocaleString('pt-BR')}`;
-    const lotLabel = showLot ? `<span class="tagm" style="background:color-mix(in srgb,var(--violet) 14%,transparent);color:var(--violet);border-color:transparent;">${ctx.cfg.nome}</span>` : '';
-    const alvoTxt = j.alvo ? ` · 🎯 #${j.alvo}` : '';
+  // agrupar por carrinho
+  const groups = {};
+  keys.forEach(k => {
+    const ctx = lotCtx(k); if (!ctx.last) return;
+    loadMeusFor(k).forEach(j => {
+      const gid = k + '|' + (j.cart || j.id);
+      (groups[gid] = groups[gid] || { gid, k, ctx, nome: j.nome || '', created: j.created, jogos: [] }).jogos.push(j);
+    });
+  });
+  const arr = Object.values(groups);
+  const totalJogos = arr.reduce((s, g) => s + g.jogos.length, 0);
+  $('meusCount').textContent = totalJogos ? `${totalJogos} jogo(s) · ${arr.length} carrinho(s)` : '';
+  if (!arr.length) { $('meusList').innerHTML = `<div class="note">Nenhuma aposta ${filtro === 'todas' ? 'salva ainda' : 'para esta loteria'}. Adicione acima, ou use o botão ⭐ nos jogos gerados.</div>`; return; }
+  arr.forEach(g => {
+    g.bestLast = 0; g.winLast = false;
+    g.jogos.forEach(j => { const h = j.nums.filter(n => g.ctx.lastSet.has(n)).length; j._hits = h; if (h > g.bestLast) g.bestLast = h; if (g.ctx.cfg.premios.includes(h)) g.winLast = true; });
+    let bh = 0, wc = 0; g.jogos.forEach(j => { const p = histPerfCtx(j.nums, g.ctx); if (p.best > bh) bh = p.best; wc += p.wins; });
+    g.bestHist = bh; g.winsHist = wc;
+  });
+  arr.sort(ordem === 'best' ? (a, b) => b.bestHist - a.bestHist || b.created - a.created : (a, b) => b.created - a.created);
+  $('meusList').innerHTML = arr.map(g => {
+    const dt = new Date(g.created).toLocaleDateString('pt-BR');
+    const titulo = g.nome ? g.nome : (g.jogos.length > 1 ? 'Bolão' : 'Jogo salvo');
+    const alvoTxt = g.jogos[0].alvo ? ` · 🎯 #${g.jogos[0].alvo}` : '';
+    const lotLabel = showLot ? `<span class="tagm" style="background:color-mix(in srgb,var(--violet) 14%,transparent);color:var(--violet);border-color:transparent;margin-bottom:8px;display:inline-block;">${g.ctx.cfg.nome}</span>` : '';
+    const jogosHtml = g.jogos.map(j => {
+      const win = g.ctx.cfg.premios.includes(j._hits);
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;"><div class="balls" style="flex:1;">${j.nums.map(n => ball(n, g.ctx.lastSet.has(n) ? 'sm gold' : 'sm')).join('')}</div><span class="tagm" style="${win ? 'color:var(--green);border-color:transparent;background:color-mix(in srgb,var(--green) 16%,transparent);' : ''}">${j._hits}${win ? ' 🏆' : ''}</span></div>`;
+    }).join('');
     return `<div class="game">
-      <div class="ghead"><span class="gtitle">${j.nums.length} dezenas · ${dt}${alvoTxt}</span><span style="display:flex;gap:6px;"><button class="chip" data-wa="${e.k}|${j.nums.join(',')}" type="button" style="padding:4px 10px;" title="Compartilhar no WhatsApp">📱</button><button class="chip" data-del="${e.k}|${j.id}" type="button" style="padding:4px 11px;">✕</button></span></div>
-      <div class="balls">${j.nums.map(n => ball(n, ctx.lastSet.has(n) ? 'sm gold' : 'sm')).join('')}</div>
-      <div class="gmeta">${lotLabel}<span class="tagm" style="${win ? 'background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);border-color:transparent;' : ''}">#${ctx.last[0]}: <b>${hits}</b> acertos${win ? ' 🏆' + premioTxt : ''}</span><span class="tagm">${perfTxt}</span></div>
+      <div class="ghead"><span class="gtitle">${titulo} · ${g.jogos.length} jogo(s) · ${dt}${alvoTxt}</span><span style="display:flex;gap:6px;"><button class="chip" data-wac="${g.gid}" type="button" style="padding:4px 10px;" title="Compartilhar no WhatsApp">📱</button><button class="chip" data-delc="${g.gid}" type="button" style="padding:4px 11px;" title="Excluir carrinho">✕</button></span></div>
+      ${lotLabel}${jogosHtml}
+      <div class="gmeta"><span class="tagm" style="${g.winLast ? 'background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);border-color:transparent;' : ''}">#${g.ctx.last[0]}: melhor <b>${g.bestLast}</b>${g.winLast ? ' 🏆' : ''}</span><span class="tagm">histórico: melhor <b>${g.bestHist}</b> · premiou <b>${g.winsHist}×</b></span></div>
     </div>`;
   }).join('');
-  $('meusList').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.del.split('|'); deleteMeus(p[0], p[1]); }));
-  $('meusList').querySelectorAll('[data-wa]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.wa.split('|'); shareWhatsApp('Meu jogo da ' + LOTERIAS[p[0]].nome, [p[1].split(',').map(Number)]); }));
+  $('meusList').querySelectorAll('[data-delc]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.delc.split('|'); deleteCart(p[0], p[1]); }));
+  $('meusList').querySelectorAll('[data-wac]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.wac.split('|'); shareCart(p[0], p[1]); }));
 }
 // Backup: exportar/importar todas as apostas
 function exportBackup() {
