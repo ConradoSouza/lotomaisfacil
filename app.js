@@ -528,6 +528,14 @@ function shareCart(k, cartKey) {
   const nome = (grp[0] && grp[0].nome) || 'Meus jogos';
   shareWhatsApp(nome + ' — ' + LOTERIAS[k].nome, grp.map(j => j.nums));
 }
+function deleteGame(k, id) { saveMeusFor(k, loadMeusFor(k).filter(j => j.id !== id)); if (k === KEY) meusJogos = loadMeus(); renderMeus(); }
+function renameCart(k, cartKey) {
+  const arr = loadMeusFor(k), cur = arr.find(j => (j.cart || j.id) === cartKey);
+  const novo = prompt('Nome do carrinho:', (cur && cur.nome) || '');
+  if (novo === null) return;
+  arr.forEach(j => { if ((j.cart || j.id) === cartKey) j.nome = novo.trim(); });
+  saveMeusFor(k, arr); if (k === KEY) meusJogos = loadMeus(); renderMeus();
+}
 // contexto de qualquer loteria (para exibir jogos de todas)
 function lotCtx(k) {
   const draws = (window.LOTO_DB && window.LOTO_DB[k] ? window.LOTO_DB[k] : []).slice().sort((a, b) => a[0] - b[0]);
@@ -569,18 +577,24 @@ function renderMeus() {
     const titulo = g.nome ? g.nome : (g.jogos.length > 1 ? 'Bolão' : 'Jogo salvo');
     const alvoTxt = g.jogos[0].alvo ? ` · 🎯 #${g.jogos[0].alvo}` : '';
     const lotLabel = showLot ? `<span class="tagm" style="background:color-mix(in srgb,var(--violet) 14%,transparent);color:var(--violet);border-color:transparent;margin-bottom:8px;display:inline-block;">${g.ctx.cfg.nome}</span>` : '';
-    const jogosHtml = g.jogos.map(j => {
+    const multi = g.jogos.length > 1;
+    const jogosHtml = g.jogos.map((j, idx) => {
       const win = g.ctx.cfg.premios.includes(j._hits);
-      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;"><div class="balls" style="flex:1;">${j.nums.map(n => ball(n, g.ctx.lastSet.has(n) ? 'sm gold' : 'sm')).join('')}</div><span class="tagm" style="${win ? 'color:var(--green);border-color:transparent;background:color-mix(in srgb,var(--green) 16%,transparent);' : ''}">${j._hits}${win ? ' 🏆' : ''}</span></div>`;
+      const sep = multi && idx < g.jogos.length - 1 ? 'border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:7px;' : 'margin-bottom:5px;';
+      const num = multi ? `<span style="color:var(--muted);font-size:11px;font-weight:700;flex:none;min-width:14px;">${idx + 1}</span>` : '';
+      const delG = multi ? `<button class="chip" data-delg="${g.k}|${j.id}" type="button" style="padding:2px 8px;font-size:11px;flex:none;" title="Excluir este jogo">✕</button>` : '';
+      return `<div style="display:flex;align-items:center;gap:8px;${sep}">${num}<div class="balls" style="flex:1;">${j.nums.map(n => ball(n, g.ctx.lastSet.has(n) ? 'sm gold' : 'sm')).join('')}</div><span class="tagm" style="${win ? 'color:var(--green);border-color:transparent;background:color-mix(in srgb,var(--green) 16%,transparent);' : ''}">${j._hits}${win ? ' 🏆' : ''}</span>${delG}</div>`;
     }).join('');
     return `<div class="game">
-      <div class="ghead"><span class="gtitle">${titulo} · ${g.jogos.length} jogo(s) · ${dt}${alvoTxt}</span><span style="display:flex;gap:6px;"><button class="chip" data-wac="${g.gid}" type="button" style="padding:4px 10px;" title="Compartilhar no WhatsApp">📱</button><button class="chip" data-delc="${g.gid}" type="button" style="padding:4px 11px;" title="Excluir carrinho">✕</button></span></div>
+      <div class="ghead"><span class="gtitle">${titulo} · ${g.jogos.length} jogo(s) · ${dt}${alvoTxt}</span><span style="display:flex;gap:6px;"><button class="chip" data-rename="${g.gid}" type="button" style="padding:4px 10px;" title="Renomear carrinho">✏️</button><button class="chip" data-wac="${g.gid}" type="button" style="padding:4px 10px;" title="Compartilhar no WhatsApp">📱</button><button class="chip" data-delc="${g.gid}" type="button" style="padding:4px 11px;" title="Excluir carrinho">✕</button></span></div>
       ${lotLabel}${jogosHtml}
       <div class="gmeta"><span class="tagm" style="${g.winLast ? 'background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);border-color:transparent;' : ''}">#${g.ctx.last[0]}: melhor <b>${g.bestLast}</b>${g.winLast ? ' 🏆' : ''}</span><span class="tagm">histórico: melhor <b>${g.bestHist}</b> · premiou <b>${g.winsHist}×</b></span></div>
     </div>`;
   }).join('');
   $('meusList').querySelectorAll('[data-delc]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.delc.split('|'); deleteCart(p[0], p[1]); }));
   $('meusList').querySelectorAll('[data-wac]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.wac.split('|'); shareCart(p[0], p[1]); }));
+  $('meusList').querySelectorAll('[data-rename]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.rename.split('|'); renameCart(p[0], p[1]); }));
+  $('meusList').querySelectorAll('[data-delg]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.delg.split('|'); deleteGame(p[0], p[1]); }));
 }
 // Backup: exportar/importar todas as apostas
 function exportBackup() {
