@@ -329,7 +329,7 @@ function renderOneGame(game, titulo) {
   $('genResults').innerHTML = `<div class="game"><div class="ghead"><span class="gtitle">${titulo}</span><span class="tagm">Score médio <b>${m.avgScore.toFixed(0)}</b></span></div>
     <div class="balls">${game.map(n => ball(n, 'sm')).join('')}</div>
     <div class="gmeta"><span class="tagm">Soma <b>${m.soma}</b></span><span class="tagm">${m.pares}P / ${m.impares}I</span><span class="tagm">Faixas ${m.fc.join('-')}</span></div></div>`;
-  $('genResults').appendChild(exportBar(titulo + ' — ' + L.nome, [game], KEY + '-jogo'));
+  $('genResults').appendChild(exportBar(titulo + ' — ' + L.nome, [game], KEY + '-jogo', true));
 }
 function gameMeta(game) {
   const pares = game.filter(n => n % 2 === 0).length;
@@ -364,6 +364,28 @@ function printGames(title, games) {
   w.document.close();
 }
 const APP_URL = 'https://lotomaisfacil.pages.dev/';
+// leva as dezenas dos jogos gerados para o modo Fechamento (bolão = união das dezenas)
+function copyToFechamento(games) {
+  const flat = games.reduce((a, g) => a.concat(g), []);
+  const uni = [...new Set(flat)];
+  let pool;
+  if (uni.length > L.fechMax) {
+    const freq = {}; flat.forEach(n => freq[n] = (freq[n] || 0) + 1);
+    pool = uni.sort((a, b) => (freq[b] - freq[a]) || (a - b)).slice(0, L.fechMax).sort((a, b) => a - b);
+  } else pool = uni.sort((a, b) => a - b);
+  $('gerToggle').querySelector('[data-mode="fechamento"]').click();
+  selFech.clear();
+  const cells = $('fechPicker').children;
+  Array.from(cells).forEach(c => c.classList.remove('sel'));
+  pool.forEach(n => { const idx = NUMS.indexOf(n); if (idx >= 0 && cells[idx]) { selFech.add(n); cells[idx].classList.add('sel'); } });
+  fechMsg();
+  let aviso;
+  if (uni.length > L.fechMax) aviso = `Peguei as <b>${L.fechMax}</b> dezenas mais presentes nos jogos (o bolão do fechamento vai até ${L.fechMax}).`;
+  else if (pool.length < K + 1) aviso = `Bolão de <b>${pool.length}</b> dezenas — adicione mais ${K + 1 - pool.length} (mínimo ${K + 1}) para poder fechar.`;
+  else aviso = `Bolão de <b>${pool.length}</b> dezenas pronto! Escolha a garantia e toque em "Gerar fechamento".`;
+  $('fechResult').innerHTML = `<div class="note">${aviso}</div>`;
+  $('fechMode').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 function waText(title, games) {
   const linhas = games.map((g, i) => (games.length > 1 ? 'Jogo ' + (i + 1) + ': ' : '') + g.map(pad).join(' '));
   return `🍀 ${title}\n\n${linhas.join('\n')}\n\nGerado no Loto+Facil:\n${APP_URL}`;
@@ -371,9 +393,10 @@ function waText(title, games) {
 function shareWhatsApp(title, games) {
   window.open('https://wa.me/?text=' + encodeURIComponent(waText(title, games)), '_blank');
 }
-function exportBar(title, games, baseName) {
+function exportBar(title, games, baseName, fechavel) {
   const bar = document.createElement('div'); bar.className = 'chips'; bar.style.marginTop = '12px';
   const mk = (txt, fn) => { const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = txt; b.addEventListener('click', () => fn(b)); return b; };
+  if (fechavel && L.fechamento !== false) bar.append(mk('🎯 Montar fechamento', () => copyToFechamento(games)));
   const salvar = mk('⭐ Salvar em Meus jogos', () => {
     if (bar.querySelector('.saveform') || salvar.disabled) return;
     const form = document.createElement('div'); form.className = 'saveform';
@@ -710,7 +733,7 @@ $('genBtn').addEventListener('click', () => {
       <div class="gmeta"><span class="tagm">Soma <b>${m.soma}</b></span><span class="tagm">${m.pares}P / ${m.impares}I</span><span class="tagm">Repetiu <b>${m.rep}</b> do último</span><span class="tagm">Faixas ${m.fc.join('-')}</span></div></div>`;
   }
   $('genResults').innerHTML = html;
-  $('genResults').appendChild(exportBar('Jogos gerados — ' + L.nome, out, KEY + '-jogos'));
+  $('genResults').appendChild(exportBar('Jogos gerados — ' + L.nome, out, KEY + '-jogos', true));
 });
 
 $('gerToggle').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { $('gerToggle').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); const f = b.dataset.mode === 'fechamento'; $('genMode').style.display = f ? 'none' : ''; $('fechMode').style.display = f ? '' : 'none'; }));
