@@ -757,9 +757,11 @@ $('fechBtn').addEventListener('click', () => {
       <div class="bignum"><span class="b">${gamesNums.length}</span><span class="bd">jogos<br>bolão de ${pool.length} dezenas</span></div>
       <div class="result-line"><span class="k">Garantia</span><span class="v" style="text-align:right;max-width:60%;">${gar}</span></div>
       <div class="result-line"><span class="k">Custo estimado</span><span class="v">${brl(gamesNums.length * price)}</span></div>
-      <div class="result-line"><span class="k">Bolão</span><span class="v">${pool.map(pad).join(' ')}</span></div></div>
-      <div style="margin-top:12px;">${list}</div>`;
+      <div class="result-line"><span class="k">Bolão</span><span class="v">${pool.map(pad).join(' ')}</span></div></div>`;
+    // barra de ações (salvar como carrinho, compartilhar, exportar) logo após o resumo
     $('fechResult').appendChild(exportBar('Fechamento — ' + L.nome, gamesNums, KEY + '-fechamento'));
+    const listWrap = document.createElement('div'); listWrap.style.marginTop = '12px'; listWrap.innerHTML = list;
+    $('fechResult').appendChild(listWrap);
   }, 30);
 });
 
