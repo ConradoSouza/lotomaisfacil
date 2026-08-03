@@ -1,5 +1,5 @@
 /* Loto+Facil — service worker (cache offline) */
-const CACHE = 'lotomais-v21';
+const CACHE = 'lotomais-v22';
 const ASSETS = [
   './',
   './app.js',
@@ -32,6 +32,18 @@ self.addEventListener('fetch', e => {
   // Evita servir respostas redirecionadas do cache, que quebram o app instalado.
   if (e.request.mode === 'navigate') {
     e.respondWith(fetch(e.request).catch(() => caches.match('./')));
+    return;
+  }
+
+  // Dados dos concursos: rede primeiro (sempre pega o mais recente do robô),
+  // com o cache como reserva quando offline. Sem isso, o app fica com dados velhos.
+  if (e.request.url.indexOf('/dados/') !== -1) {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res && res.status === 200) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {}); }
+        return res;
+      }).catch(() => caches.match(e.request))
+    );
     return;
   }
 
