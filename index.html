@@ -118,7 +118,7 @@
 
   /* Controls */
   label.field{display:block;margin-bottom:12px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
-  select,input[type=number]{width:100%;margin-top:6px;background:var(--surface-2);border:1px solid var(--line);
+  select,input[type=number],input[type=text],input[type=email],input[type=password]{width:100%;margin-top:6px;background:var(--surface-2);border:1px solid var(--line);
     color:var(--ink);border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;}
   input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;background:var(--surface-3);outline:none;margin:9px 0 0;padding:0;}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:19px;height:19px;border-radius:50%;background:var(--violet);cursor:pointer;box-shadow:0 2px 6px rgba(90,50,200,.4);}
@@ -264,6 +264,7 @@
       <option value="duplasena">Dupla Sena</option>
       <option value="diadesorte">Dia de Sorte</option>
     </select>
+    <button class="hbtn" id="contaBtn" title="Minha conta">👤</button>
     <button class="hbtn" id="helpBtn" title="Ajuda / glossário">?</button>
     <button class="hbtn" id="themeBtn" title="Alternar tema">◐</button>
   </div>
@@ -662,6 +663,16 @@
   </div>
 </div>
 
+<div id="contaModal" class="modal" style="display:none;">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2 id="contaTitulo">Minha conta</h2>
+      <button class="hbtn" id="contaClose" title="Fechar">✕</button>
+    </div>
+    <div class="modal-body" id="contaBody"></div>
+  </div>
+</div>
+
 <div id="aboutModal" class="modal" style="display:none;">
   <div class="modal-card">
     <div class="modal-head">
@@ -708,6 +719,8 @@
 <script src="dados/lotomania.js"></script>
 <script src="dados/duplasena.js"></script>
 <script src="dados/diadesorte.js"></script>
+<script src="lib/supabase.js"></script>
+<script src="config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

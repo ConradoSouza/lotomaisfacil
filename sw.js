@@ -1,8 +1,10 @@
 /* Loto+Facil — service worker (cache offline) */
-const CACHE = 'lotomais-v22';
+const CACHE = 'lotomais-v24';
 const ASSETS = [
   './',
   './app.js',
+  './config.js',
+  './lib/supabase.js',
   './dados/lotofacil.js',
   './dados/megasena.js',
   './dados/quina.js',

@@ -366,6 +366,8 @@ function printGames(title, games) {
 const APP_URL = 'https://lotomaisfacil.pages.dev/';
 // leva as dezenas dos jogos gerados para o modo Fechamento (bolão = união das dezenas)
 function copyToFechamento(games) {
+  $('gerToggle').querySelector('[data-mode="fechamento"]').click();
+  if (!isPro()) { $('fechResult').innerHTML = proNote('Fechamentos'); $('fechMode').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   const flat = games.reduce((a, g) => a.concat(g), []);
   const uni = [...new Set(flat)];
   let pool;
@@ -373,7 +375,6 @@ function copyToFechamento(games) {
     const freq = {}; flat.forEach(n => freq[n] = (freq[n] || 0) + 1);
     pool = uni.sort((a, b) => (freq[b] - freq[a]) || (a - b)).slice(0, L.fechMax).sort((a, b) => a - b);
   } else pool = uni.sort((a, b) => a - b);
-  $('gerToggle').querySelector('[data-mode="fechamento"]').click();
   selFech.clear();
   const cells = $('fechPicker').children;
   Array.from(cells).forEach(c => c.classList.remove('sel'));
@@ -542,22 +543,30 @@ function loadMeus() { return loadMeusFor(KEY); }
 function saveMeus() { saveMeusFor(KEY, meusJogos); }
 function addMeusGames(arr, nome) {
   const now = Date.now(), alvo = DRAWS[N - 1][0] + 1, cart = 'c' + now;
-  arr.forEach((nums, i) => meusJogos.push({ id: now + '-' + i + '-' + Math.random().toString(36).slice(2, 6), nums, created: now, alvo, cart, nome: nome || '' }));
+  const novos = arr.map((nums, i) => ({ id: now + '-' + i + '-' + Math.random().toString(36).slice(2, 6), nums, created: now, alvo, cart, nome: nome || '' }));
+  novos.forEach(j => meusJogos.push(j));
   saveMeus(); renderMeus();
+  enviarJogosNuvem(KEY, novos);
 }
-function deleteCart(k, cartKey) { saveMeusFor(k, loadMeusFor(k).filter(j => (j.cart || j.id) !== cartKey)); if (k === KEY) meusJogos = loadMeus(); renderMeus(); }
+function deleteCart(k, cartKey) {
+  const arr = loadMeusFor(k), ids = arr.filter(j => (j.cart || j.id) === cartKey).map(j => j.id);
+  saveMeusFor(k, arr.filter(j => (j.cart || j.id) !== cartKey)); if (k === KEY) meusJogos = loadMeus(); renderMeus();
+  removerJogosNuvem(ids);
+}
 function shareCart(k, cartKey) {
   const grp = loadMeusFor(k).filter(j => (j.cart || j.id) === cartKey);
   const nome = (grp[0] && grp[0].nome) || 'Meus jogos';
   shareWhatsApp(nome + ' — ' + LOTERIAS[k].nome, grp.map(j => j.nums));
 }
-function deleteGame(k, id) { saveMeusFor(k, loadMeusFor(k).filter(j => j.id !== id)); if (k === KEY) meusJogos = loadMeus(); renderMeus(); }
+function deleteGame(k, id) { saveMeusFor(k, loadMeusFor(k).filter(j => j.id !== id)); if (k === KEY) meusJogos = loadMeus(); renderMeus(); removerJogosNuvem([id]); }
 function renameCart(k, cartKey) {
   const arr = loadMeusFor(k), cur = arr.find(j => (j.cart || j.id) === cartKey);
   const novo = prompt('Nome do carrinho:', (cur && cur.nome) || '');
   if (novo === null) return;
-  arr.forEach(j => { if ((j.cart || j.id) === cartKey) j.nome = novo.trim(); });
+  const ids = [];
+  arr.forEach(j => { if ((j.cart || j.id) === cartKey) { j.nome = novo.trim(); ids.push(j.id); } });
   saveMeusFor(k, arr); if (k === KEY) meusJogos = loadMeus(); renderMeus();
+  renomearNuvem(ids, novo.trim());
 }
 // contexto de qualquer loteria (para exibir jogos de todas)
 function lotCtx(k) {
@@ -639,7 +648,7 @@ function importBackup(ev) {
         jogos[k].forEach(j => { if (j && Array.isArray(j.nums) && !ids.has(j.id)) { cur.push(j); add++; } });
         saveMeusFor(k, cur);
       });
-      meusJogos = loadMeus(); renderMeus();
+      meusJogos = loadMeus(); renderMeus(); enviarTudoNuvem();
       alert(add ? add + ' aposta(s) importada(s)!' : 'Nada novo para importar.');
     } catch (e) { alert('Arquivo de backup inválido.'); }
   };
@@ -690,6 +699,7 @@ function buildLottery(key) {
 
   meusJogos = loadMeus();
   renderPainel(); renderDezenas(); renderPadroes(); renderMeus();
+  if (typeof aplicarGating === 'function') aplicarGating();
   window.scrollTo(0, 0);
 }
 
@@ -724,7 +734,7 @@ $('genBtn').addEventListener('click', () => {
   const cfg = { qtd: parseInt($('genQtd').value), rep: $('fRep').checked, par: $('fPar').checked, soma: $('fSoma').checked, faixa: $('fFaixa').checked, score: $('fScore').checked };
   if (L.total - excluidas.size < cfg.qtd) { $('genResults').innerHTML = `<div class="note">Você excluiu dezenas demais — sobram ${L.total - excluidas.size}, mas o jogo precisa de ${cfg.qtd}.</div>`; return; }
   if (fixadas.size > cfg.qtd) { $('genResults').innerHTML = `<div class="note">Você fixou ${fixadas.size} dezenas, mas o jogo tem ${cfg.qtd}. Reduza as fixas ou aumente as dezenas por jogo.</div>`; return; }
-  const count = Math.max(1, Math.min(20, parseInt($('genCount').value) || 1));
+  const count = Math.max(1, Math.min(isPro() ? 20 : 3, parseInt($('genCount').value) || 1));
   let html = ''; const out = [];
   for (let i = 0; i < count; i++) {
     const g = generateOne(cfg); out.push(g); const m = gameMeta(g);
@@ -740,6 +750,7 @@ $('gerToggle').querySelectorAll('button').forEach(b => b.addEventListener('click
 $('surpresinha').addEventListener('click', () => renderOneGame(quickPick(L.apostaMin, null), '🎲 Surpresinha'));
 $('dataBtn').addEventListener('click', () => { const d = ($('dataSorte').value || '').trim(); if (!d) { $('genResults').innerHTML = '<div class="note">Digite uma data (ex.: 15/03/1990).</div>'; return; } renderOneGame(quickPick(L.apostaMin, KEY + '|' + d), '🍀 Números de ' + d); });
 $('fechBtn').addEventListener('click', () => {
+  if (!isPro()) { $('fechResult').innerHTML = proNote('Fechamentos'); return; }
   if (selFech.size < K + 1) { $('fechResult').innerHTML = `<div class="note">Selecione de ${K + 1} a ${L.fechMax} dezenas.</div>`; return; }
   const pool = [...selFech].sort((a, b) => a - b), P = parseInt($('fechGar').value), price = parseFloat($('fechPrice').value) || 0;
   if (P < K) { const m = pool.length, maxDiff = K - P; let cov = 0; for (let d = 0; d <= maxDiff; d++) cov += binom(K, d) * binom(m - K, d);
@@ -930,11 +941,145 @@ function applyTheme(t) { document.documentElement.setAttribute('data-theme', t);
 (function () { let t; try { t = localStorage.getItem('lotomais-theme'); } catch (e) {} if (t) applyTheme(t); })();
 $('themeBtn').addEventListener('click', () => { const cur = document.documentElement.getAttribute('data-theme'); const dark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; applyTheme(dark ? 'light' : 'dark'); });
 
+/* ================= Contas (Supabase) ================= */
+const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
+  ? window.supabase.createClient(window.LOTO_CFG.SUPABASE_URL, window.LOTO_CFG.SUPABASE_ANON_KEY)
+  : null;
+let usuario = null, perfil = null, modoCadastro = false;
+function isPro() { return !!(perfil && perfil.plano === 'pro' && (!perfil.pro_ate || new Date(perfil.pro_ate) > new Date())); }
+function nomeUsuario() { return (perfil && perfil.nome) || (usuario && usuario.email) || ''; }
+
+async function carregarPerfil() {
+  if (!SB || !usuario) { perfil = null; return; }
+  try { const { data } = await SB.from('perfis').select('nome,plano,pro_ate').eq('id', usuario.id).single(); perfil = data || { nome: '', plano: 'free' }; }
+  catch (e) { perfil = { nome: '', plano: 'free' }; }
+}
+function atualizarContaBtn() {
+  const b = $('contaBtn'); if (!b) return;
+  if (usuario) { b.textContent = (nomeUsuario()[0] || '?').toUpperCase(); b.style.background = 'var(--violet)'; b.style.color = '#fff'; }
+  else { b.textContent = '👤'; b.style.background = ''; b.style.color = ''; }
+}
+function traduzErro(m) {
+  m = (m || '').toLowerCase();
+  if (m.includes('invalid login')) return 'Email ou senha incorretos.';
+  if (m.includes('already registered') || m.includes('already been')) return 'Este email já tem conta. Faça login.';
+  if (m.includes('at least 6') || (m.includes('password') && m.includes('6'))) return 'A senha precisa de pelo menos 6 caracteres.';
+  if (m.includes('valid email') || m.includes('invalid email')) return 'Email inválido.';
+  return m || 'Erro. Tente de novo.';
+}
+function renderContaBody() {
+  const body = $('contaBody'); if (!body) return;
+  if (!SB) { body.innerHTML = `<div class="note">As contas ainda não estão configuradas.</div>`; return; }
+  if (usuario) {
+    const nome = nomeUsuario(), pro = isPro(), ini = (nome[0] || '?').toUpperCase();
+    body.innerHTML = `<div style="text-align:center;padding:12px 0;">
+        <div style="width:60px;height:60px;border-radius:50%;background:var(--violet);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;margin:0 auto 10px;">${ini}</div>
+        <div style="font-weight:800;font-size:17px;">${nome}</div>
+        <div class="sub" style="margin:2px 0 0;">${usuario.email}</div>
+        <div style="margin-top:12px;"><span class="tagm" style="border-color:transparent;font-size:13px;padding:5px 14px;${pro ? 'background:color-mix(in srgb,var(--gold) 22%,transparent);color:var(--amber);' : ''}">${pro ? '⭐ Plano Pro' : 'Plano Grátis'}</span></div>
+      </div>
+      ${pro ? '' : `<div class="note" style="margin-top:6px;">No <b>Pro</b> você libera: fechamentos, gerar muitos jogos de uma vez e sincronizar seus jogos na nuvem.</div><button class="btn" id="btnUpgrade" style="margin-top:12px;">⭐ Assinar Pro</button>`}
+      <button class="btn sec" id="btnSair" style="margin-top:10px;">Sair</button>`;
+    $('btnSair').addEventListener('click', sair);
+    if ($('btnUpgrade')) $('btnUpgrade').addEventListener('click', () => alert('O pagamento automático (Mercado Pago) entra na próxima etapa. Por enquanto o Pro é liberado manualmente para testes.'));
+  } else {
+    body.innerHTML = `<p class="sub" style="margin:10px 0 14px;">${modoCadastro ? 'Crie sua conta para salvar e sincronizar seus jogos entre aparelhos.' : 'Entre para acessar seus jogos em qualquer aparelho.'}</p>
+      ${modoCadastro ? `<label class="field">Nome<input type="text" id="acNome" autocomplete="name"></label>` : ''}
+      <label class="field">Email<input type="email" id="acEmail" autocomplete="email"></label>
+      <label class="field">Senha<input type="password" id="acSenha" autocomplete="${modoCadastro ? 'new-password' : 'current-password'}"></label>
+      <div id="acErro" class="note" style="border-color:var(--red);color:var(--red);display:none;margin-bottom:10px;"></div>
+      <button class="btn" id="acSubmit">${modoCadastro ? 'Cadastrar' : 'Entrar'}</button>
+      <p class="sub" style="text-align:center;margin-top:14px;">${modoCadastro ? 'Já tem conta?' : 'Não tem conta?'} <button id="acToggle" type="button" style="background:none;border:none;color:var(--violet);font-weight:700;cursor:pointer;font-family:inherit;">${modoCadastro ? 'Entrar' : 'Criar conta'}</button></p>`;
+    $('acToggle').addEventListener('click', () => { modoCadastro = !modoCadastro; renderContaBody(); });
+    $('acSubmit').addEventListener('click', submitAuth);
+    $('acSenha').addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth(); });
+  }
+}
+async function submitAuth() {
+  const email = ($('acEmail').value || '').trim(), senha = $('acSenha').value, erro = $('acErro');
+  erro.style.display = 'none';
+  if (!email || !senha) { erro.textContent = 'Preencha email e senha.'; erro.style.color = 'var(--red)'; erro.style.borderColor = 'var(--red)'; erro.style.display = ''; return; }
+  const btn = $('acSubmit'), txt = btn.textContent; btn.disabled = true; btn.textContent = 'Aguarde…';
+  try {
+    if (modoCadastro) {
+      const { data, error } = await SB.auth.signUp({ email, password: senha, options: { data: { nome: ($('acNome').value || '').trim() } } });
+      if (error) throw error;
+      if (!data.session) { erro.style.color = 'var(--ink-soft)'; erro.style.borderColor = 'var(--line)'; erro.textContent = 'Conta criada! Confirme pelo email e depois entre.'; erro.style.display = ''; btn.disabled = false; btn.textContent = txt; return; }
+    } else {
+      const { error } = await SB.auth.signInWithPassword({ email, password: senha });
+      if (error) throw error;
+    }
+    closeConta();
+  } catch (e) { erro.textContent = traduzErro(e.message); erro.style.color = 'var(--red)'; erro.style.borderColor = 'var(--red)'; erro.style.display = ''; btn.disabled = false; btn.textContent = txt; }
+}
+async function sair() { if (SB) await SB.auth.signOut(); closeConta(); }
+function openConta() { renderContaBody(); $('contaModal').style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+function closeConta() { $('contaModal').style.display = 'none'; document.body.style.overflow = ''; }
+window.abrirConta = openConta;
+$('contaBtn').addEventListener('click', openConta);
+$('contaClose').addEventListener('click', closeConta);
+$('contaModal').addEventListener('click', e => { if (e.target === $('contaModal')) closeConta(); });
+
+/* --------- Gating do Pro --------- */
+function proNote(recurso) { return `<div class="note" style="border-color:var(--gold);"><b>🔒 ${recurso} é um recurso Pro.</b><br>Entre na sua conta e assine o Pro para liberar. <button class="chip" type="button" onclick="abrirConta()" style="margin-top:8px;">Ver plano Pro</button></div>`; }
+function aplicarGating() {
+  const pro = isPro(), gc = $('genCount');
+  if (gc) { gc.max = pro ? 20 : 3; if (!pro && (parseInt(gc.value) || 1) > 3) gc.value = 3; }
+  const ft = $('gerToggle') && $('gerToggle').querySelector('[data-mode="fechamento"]');
+  if (ft && typeof L !== 'undefined') ft.textContent = (!pro && L.fechamento !== false) ? 'Fechamento 🔒' : 'Fechamento';
+}
+
+/* --------- Sincronização dos jogos (Pro) --------- */
+async function puxarJogosNuvem() {
+  if (!SB || !usuario || !isPro()) return;
+  try {
+    const { data } = await SB.from('jogos').select('*').eq('user_id', usuario.id);
+    if (!data) return;
+    const porLot = {};
+    data.forEach(r => { (porLot[r.loteria] = porLot[r.loteria] || []).push({ id: r.id, nums: r.nums, nome: r.nome || '', cart: r.cart, alvo: r.alvo, created: Number(r.created) }); });
+    Object.keys(porLot).forEach(k => {
+      if (!LOTERIAS[k]) return;
+      const local = loadMeusFor(k), ids = new Set(local.map(j => j.id));
+      porLot[k].forEach(j => { if (!ids.has(j.id)) local.push(j); });
+      saveMeusFor(k, local);
+    });
+    meusJogos = loadMeus();
+  } catch (e) {}
+}
+async function enviarJogosNuvem(k, jogos) {
+  if (!SB || !usuario || !isPro() || !jogos.length) return;
+  const rows = jogos.map(j => ({ id: j.id, user_id: usuario.id, loteria: k, nums: j.nums, nome: j.nome || '', cart: j.cart, alvo: j.alvo, created: j.created }));
+  try { await SB.from('jogos').upsert(rows); } catch (e) {}
+}
+async function removerJogosNuvem(ids) { if (!SB || !usuario || !isPro() || !ids.length) return; try { await SB.from('jogos').delete().in('id', ids); } catch (e) {} }
+async function enviarTudoNuvem() { if (!isPro()) return; for (const k of Object.keys(LOTERIAS)) { const arr = loadMeusFor(k); if (arr.length) await enviarJogosNuvem(k, arr); } }
+async function renomearNuvem(ids, nome) { if (!SB || !usuario || !isPro() || !ids.length) return; try { await SB.from('jogos').update({ nome }).in('id', ids); } catch (e) {} }
+
+async function initAuth() {
+  if (!SB) { atualizarContaBtn(); return; }
+  const { data } = await SB.auth.getSession();
+  usuario = data.session ? data.session.user : null;
+  if (usuario) await carregarPerfil();
+  atualizarContaBtn(); aplicarGating();
+  if (usuario && isPro()) await puxarJogosNuvem();
+  renderMeus();
+  SB.auth.onAuthStateChange(async (_ev, session) => {
+    const antes = usuario && usuario.id;
+    usuario = session ? session.user : null;
+    await carregarPerfil();
+    atualizarContaBtn(); aplicarGating();
+    if (usuario && isPro()) await puxarJogosNuvem();
+    renderMeus();
+    if ($('contaModal').style.display === 'flex') renderContaBody();
+  });
+}
+
 /* ================= Init ================= */
 (function init() {
   let key = 'lotofacil'; try { const k = localStorage.getItem('lotomais-loteria'); if (k && LOTERIAS[k]) key = k; } catch (e) {}
   $('lotSel').value = key;
   buildLottery(key);
+  initAuth();
 })();
 
 if ('serviceWorker' in navigator) {
