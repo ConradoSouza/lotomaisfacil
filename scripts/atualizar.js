@@ -18,31 +18,37 @@ async function getJSON(url) {
 function entriesFrom(key, j) {
   const c = j.concurso || j.numero, dt = j.data || j.dataApuracao;
   const dez = (j.dezenas || j.listaDezenas || []).map(Number);
-  if (key === 'duplasena' && dez.length === 12)
-    return [[c, dt, dez.slice(0, 6).sort((a, b) => a - b)], [c, dt, dez.slice(6, 12).sort((a, b) => a - b)]];
+  if (key === 'duplasena') {
+    const seg = (j.listaDezenasSegundoSorteio || []).map(Number);
+    if (seg.length) return [[c, dt, dez.slice().sort((a, b) => a - b)], [c, dt, seg.sort((a, b) => a - b)]];
+    if (dez.length === 12) return [[c, dt, dez.slice(0, 6).sort((a, b) => a - b)], [c, dt, dez.slice(6, 12).sort((a, b) => a - b)]];
+  }
   return [[c, dt, dez.slice().sort((a, b) => a - b)]];
 }
 function premiosFrom(j) {
-  const premios = {};
-  (j.premiacoes || []).forEach(p => {
-    const h = parseInt(p.descricao != null ? p.descricao : p.faixa);
+  const premios = {}, lista = j.premiacoes || j.listaRateioPremio || [];
+  lista.forEach(p => {
+    const desc = p.descricao != null ? p.descricao : (p.descricaoFaixa != null ? p.descricaoFaixa : p.faixa);
+    const h = parseInt(desc);
     if (isNaN(h)) return;
-    const v = p.valorPremio || 0, g = p.ganhadores || 0;
+    const v = p.valorPremio || 0, g = (p.ganhadores != null ? p.ganhadores : p.numeroDeGanhadores) || 0;
     if (!premios[h] || v > premios[h][0]) premios[h] = [v, g];
   });
   return { concurso: j.concurso || j.numero, data: j.data || j.dataApuracao, premios };
 }
+const GUIDI = (key) => 'https://api.guidi.dev.br/loteria/' + key;              // espelho da Caixa, atualizado
+const COMUNIT = (key) => 'https://loteriascaixa-api.herokuapp.com/api/' + key;  // fallback (às vezes trava)
+const CAIXA = (key) => 'https://servicebus2.caixa.gov.br/portaldeloterias/api/' + key; // oficial (fallback)
+
 async function latestNumber(key) {
-  const API = 'https://loteriascaixa-api.herokuapp.com/api/' + key;
-  const CAIXA = 'https://servicebus2.caixa.gov.br/portaldeloterias/api/' + key;
-  try { return (await getJSON(API + '/latest')).concurso; }
-  catch (e) { const j = await getJSON(CAIXA); return j.numero || j.concurso; }
+  try { const j = await getJSON(GUIDI(key) + '/ultimo'); if (j && (j.numero || j.concurso)) return j.numero || j.concurso; } catch (e) { /* segue */ }
+  try { const j = await getJSON(COMUNIT(key) + '/latest'); if (j && j.concurso) return j.concurso; } catch (e) { /* segue */ }
+  const j = await getJSON(CAIXA(key)); return j.numero || j.concurso;
 }
 async function fetchRaw(key, n) {
-  const API = 'https://loteriascaixa-api.herokuapp.com/api/' + key;
-  const CAIXA = 'https://servicebus2.caixa.gov.br/portaldeloterias/api/' + key;
-  try { return await getJSON(API + '/' + n); }
-  catch (e) { return await getJSON(CAIXA + '/' + n); }
+  try { const j = await getJSON(GUIDI(key) + '/' + n); if (j && (j.numero || j.concurso)) return j; } catch (e) { /* segue */ }
+  try { const j = await getJSON(COMUNIT(key) + '/' + n); if (j && (j.concurso || j.numero)) return j; } catch (e) { /* segue */ }
+  return await getJSON(CAIXA(key) + '/' + n);
 }
 
 async function atualizar(key) {

@@ -5,7 +5,8 @@ name: Atualizar loterias
 
 on:
   schedule:
-    - cron: '0 2 * * *'   # todo dia às 02:00 UTC (~23:00 BRT, após o sorteio)
+    - cron: '0 1 * * *'    # ~22h BRT (01:00 UTC) — pega o sorteio na mesma noite
+    - cron: '0 11 * * *'   # ~08h BRT (11:00 UTC) — reforço na manhã seguinte
   workflow_dispatch: {}    # permite rodar manualmente pelo botão do GitHub
 
 jobs:
