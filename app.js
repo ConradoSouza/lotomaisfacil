@@ -981,7 +981,7 @@ function renderContaBody() {
       ${pro ? '' : `<div class="note" style="margin-top:6px;">No <b>Pro</b> você libera: fechamentos, gerar muitos jogos de uma vez e sincronizar seus jogos na nuvem.</div><button class="btn" id="btnUpgrade" style="margin-top:12px;">⭐ Assinar Pro</button>`}
       <button class="btn sec" id="btnSair" style="margin-top:10px;">Sair</button>`;
     $('btnSair').addEventListener('click', sair);
-    if ($('btnUpgrade')) $('btnUpgrade').addEventListener('click', () => alert('O pagamento automático (Mercado Pago) entra na próxima etapa. Por enquanto o Pro é liberado manualmente para testes.'));
+    if ($('btnUpgrade')) $('btnUpgrade').addEventListener('click', assinarPro);
   } else {
     body.innerHTML = `<p class="sub" style="margin:10px 0 14px;">${modoCadastro ? 'Crie sua conta para salvar e sincronizar seus jogos entre aparelhos.' : 'Entre para acessar seus jogos em qualquer aparelho.'}</p>
       ${modoCadastro ? `<label class="field">Nome<input type="text" id="acNome" autocomplete="name"></label>` : ''}
@@ -1013,6 +1013,30 @@ async function submitAuth() {
   } catch (e) { erro.textContent = traduzErro(e.message); erro.style.color = 'var(--red)'; erro.style.borderColor = 'var(--red)'; erro.style.display = ''; btn.disabled = false; btn.textContent = txt; }
 }
 async function sair() { if (SB) await SB.auth.signOut(); closeConta(); }
+async function assinarPro() {
+  if (!SB || !usuario) { openConta(); return; }
+  const btn = $('btnUpgrade'); if (btn) { btn.disabled = true; btn.textContent = 'Gerando pagamento…'; }
+  try {
+    const { data, error } = await SB.functions.invoke('criar-pagamento');
+    const link = data && (data.init_point || data.sandbox);
+    if (error || !link) throw (error || new Error('sem link'));
+    window.location.href = link;
+  } catch (e) {
+    alert('Não consegui iniciar o pagamento agora. Tente de novo em instantes.');
+    if (btn) { btn.disabled = false; btn.textContent = '⭐ Assinar Pro'; }
+  }
+}
+async function checarRetornoPagamento() {
+  const pro = new URLSearchParams(location.search).get('pro');
+  if (!pro) return;
+  history.replaceState(null, '', location.pathname);
+  if (pro === 'ok') {
+    for (let i = 0; i < 8 && !isPro(); i++) { await carregarPerfil(); if (isPro()) break; await new Promise(r => setTimeout(r, 2000)); }
+    atualizarContaBtn(); aplicarGating();
+    if (isPro()) { await puxarJogosNuvem(); renderMeus(); alert('🎉 Pagamento confirmado! Seu Pro está ativo.'); }
+    else alert('Recebemos seu pagamento — pode levar alguns instantes para liberar o Pro. Recarregue em breve.');
+  } else if (pro === 'falhou') alert('O pagamento não foi concluído. Tente novamente quando quiser.');
+}
 function openConta() { renderContaBody(); $('contaModal').style.display = 'flex'; document.body.style.overflow = 'hidden'; }
 function closeConta() { $('contaModal').style.display = 'none'; document.body.style.overflow = ''; }
 window.abrirConta = openConta;
@@ -1063,6 +1087,7 @@ async function initAuth() {
   atualizarContaBtn(); aplicarGating();
   if (usuario && isPro()) await puxarJogosNuvem();
   renderMeus();
+  if (usuario) checarRetornoPagamento();
   SB.auth.onAuthStateChange(async (_ev, session) => {
     const antes = usuario && usuario.id;
     usuario = session ? session.user : null;
