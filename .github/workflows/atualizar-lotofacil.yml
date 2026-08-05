@@ -5,8 +5,13 @@ name: Atualizar loterias
 
 on:
   schedule:
-    - cron: '0 1 * * *'    # ~22h BRT (01:00 UTC) — pega o sorteio na mesma noite
-    - cron: '0 11 * * *'   # ~08h BRT (11:00 UTC) — reforço na manhã seguinte
+    # GitHub atrasa/agrupa crons (best-effort), então usamos VÁRIOS horários na
+    # janela pós-sorteio para não depender de um único disparo pontual.
+    - cron: '30 23 * * *'  # ~20h30 BRT — logo após o sorteio
+    - cron: '30 0 * * *'   # ~21h30 BRT
+    - cron: '0 2 * * *'    # ~23h BRT
+    - cron: '0 4 * * *'    # ~01h BRT
+    - cron: '0 11 * * *'   # ~08h BRT — reforço na manhã seguinte
   workflow_dispatch: {}    # permite rodar manualmente pelo botão do GitHub
 
 jobs:
@@ -27,6 +32,7 @@ jobs:
         run: node scripts/atualizar.js
 
       - name: Salvar alterações (se houver)
+        if: always()   # commita o que conseguiu mesmo se alguma fonte falhou (o job ainda fica vermelho)
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

@@ -739,7 +739,7 @@ function renderLabTable() {
 }
 
 /* ================= Eventos (uma vez) ================= */
-$('lotSel').addEventListener('change', e => { buildLottery(e.target.value); try { localStorage.setItem('lotomais-loteria', e.target.value); } catch (x) {} });
+$('lotSel').addEventListener('change', e => { buildLottery(e.target.value); catchUp(e.target.value); try { localStorage.setItem('lotomais-loteria', e.target.value); } catch (x) {} });
 
 $('dezTable').querySelectorAll('th').forEach(th => th.addEventListener('click', () => { const k = th.dataset.k; dezSort.dir = dezSort.k === k ? -dezSort.dir : -1; dezSort.k = k; renderDezenas(); }));
 $('janelaSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { $('janelaSeg').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); janela = parseInt(b.dataset.j); renderDezenas(); }));
@@ -1126,10 +1126,39 @@ async function initAuth() {
 }
 
 /* ================= Init ================= */
+/* ===== Auto-atualização: busca resultados novos direto (via /api/resultados),
+   sem depender do robô agendado. Se vier concurso novo, mescla e re-renderiza. ===== */
+async function catchUp(key) {
+  try {
+    const base = (window.LOTO_DB && window.LOTO_DB[key]) ? window.LOTO_DB[key] : [];
+    const maxLocal = base.length ? Math.max(...base.map(d => d[0])) : 0;
+    const r = await fetch('/api/resultados?loteria=' + key + '&desde=' + maxLocal, { cache: 'no-store' });
+    if (!r.ok) return;
+    const j = await r.json();
+    if (!j || !j.ok || !Array.isArray(j.entries) || !j.entries.length) return;
+
+    window.LOTO_DB = window.LOTO_DB || {};
+    const arr = (window.LOTO_DB[key] || []).slice();
+    const vistos = new Set(arr.map(d => d[0] + '|' + (d[2] || []).join(',')));
+    let add = 0;
+    j.entries.forEach(e => {
+      if (!e || !Array.isArray(e[2])) return;
+      const id = e[0] + '|' + e[2].join(',');
+      if (!vistos.has(id)) { arr.push(e); vistos.add(id); add++; }
+    });
+    if (!add) return;
+    arr.sort((a, b) => a[0] - b[0]);
+    window.LOTO_DB[key] = arr;
+    if (j.premios && j.premios.concurso) { window.LOTO_PREMIOS = window.LOTO_PREMIOS || {}; window.LOTO_PREMIOS[key] = j.premios; }
+    if (KEY === key) buildLottery(key); // só re-renderiza se o usuário ainda está nesta loteria
+  } catch (e) { /* silencioso: mantém os dados que vieram no pacote */ }
+}
+
 (function init() {
   let key = 'lotofacil'; try { const k = localStorage.getItem('lotomais-loteria'); if (k && LOTERIAS[k]) key = k; } catch (e) {}
   $('lotSel').value = key;
   buildLottery(key);
+  catchUp(key);
   initAuth();
 })();
 

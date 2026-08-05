@@ -10,11 +10,23 @@ const LOTERIAS = ['lotofacil', 'megasena', 'quina', 'lotomania', 'duplasena', 'd
 const alvos = process.argv.slice(2).length ? process.argv.slice(2) : LOTERIAS;
 const DADOS = path.join(__dirname, '..', 'dados');
 
-async function getJSON(url) {
-  const r = await fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'Loto+Facil' } });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  return r.json();
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+async function getJSON(url, tentativas = 3) {
+  let ultErro;
+  for (let i = 0; i < tentativas; i++) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 12000);
+      try {
+        const r = await fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'Loto+Facil' }, signal: ctrl.signal });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return await r.json();
+      } finally { clearTimeout(t); }
+    } catch (e) { ultErro = e; if (i < tentativas - 1) await sleep(1500 * (i + 1)); }
+  }
+  throw ultErro;
 }
+let houveFalha = false; // marca quando havia concurso novo mas não deu pra buscar
 function entriesFrom(key, j) {
   const c = j.concurso || j.numero, dt = j.data || j.dataApuracao;
   const dez = (j.dezenas || j.listaDezenas || []).map(Number);
@@ -64,7 +76,7 @@ async function atualizar(key) {
 
   let latest;
   try { latest = await latestNumber(key); }
-  catch (e) { console.log('[' + key + '] API indisponível: ' + e.message); return; }
+  catch (e) { console.log('[' + key + '] API indisponível: ' + e.message); houveFalha = true; return; }
   if (latest <= maxLocal) { console.log('[' + key + '] atualizado (#' + maxLocal + ').'); return; }
 
   const added = [];
@@ -77,6 +89,7 @@ async function atualizar(key) {
       entries.forEach(e => draws.push(e)); added.push(n); lastJson = j;
     } catch (e) { console.log('[' + key + '] falha no #' + n + ': ' + e.message); break; }
   }
+  if (added.length < (latest - maxLocal)) houveFalha = true; // ficou concurso novo pra trás
   if (!added.length) return;
   draws.sort((a, b) => a[0] - b[0]);
   const prem = premiosFrom(lastJson);
@@ -88,4 +101,7 @@ async function atualizar(key) {
   console.log('[' + key + '] +' + added.length + ' concurso(s). Total: ' + draws.length + ' (#' + draws[draws.length - 1][0] + ')');
 }
 
-(async () => { for (const key of alvos) await atualizar(key); })();
+(async () => {
+  for (const key of alvos) await atualizar(key);
+  if (houveFalha) { console.error('ATENÇÃO: havia concurso novo que não pôde ser buscado — verifique as fontes.'); process.exitCode = 1; }
+})();

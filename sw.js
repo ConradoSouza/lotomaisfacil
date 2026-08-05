@@ -1,5 +1,5 @@
 /* Loto+Facil — service worker (cache offline) */
-const CACHE = 'lotomais-v27';
+const CACHE = 'lotomais-v28';
 const ASSETS = [
   './',
   './app.js',
@@ -36,6 +36,9 @@ self.addEventListener('fetch', e => {
     e.respondWith(fetch(e.request).catch(() => caches.match('./')));
     return;
   }
+
+  // API de resultados (auto-atualização): sempre rede, nunca cache.
+  if (e.request.url.indexOf('/api/') !== -1) { e.respondWith(fetch(e.request)); return; }
 
   // Dados dos concursos: rede primeiro (sempre pega o mais recente do robô),
   // com o cache como reserva quando offline. Sem isso, o app fica com dados velhos.
