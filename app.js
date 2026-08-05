@@ -9,7 +9,7 @@ const LOTERIAS = {
   quina: { nome: 'Quina', total: 80, sorteados: 5, apostaMin: 5, apostaMax: 15, premios: [5, 4, 3, 2], cols: 10, fechMax: 12, cor: '#6a3ad1', cor2: '#9a6cff' },
   lotomania: { nome: 'Lotomania', total: 100, min: 0, sorteados: 20, apostaMin: 50, apostaMax: 50, premios: [20, 19, 18, 17, 16, 15, 0], cols: 10, fechamento: false, cor: '#f07c00', cor2: '#ff9e33' },
   duplasena: { nome: 'Dupla Sena', total: 50, sorteados: 6, apostaMin: 6, apostaMax: 15, premios: [6, 5, 4, 3], cols: 10, fechMax: 14, cor: '#b3123a', cor2: '#e04e6e' },
-  diadesorte: { nome: 'Dia de Sorte', total: 31, sorteados: 7, apostaMin: 7, apostaMax: 15, premios: [7, 6, 5, 4], cols: 8, fechMax: 14, cor: '#c58a1a', cor2: '#e6b23f' },
+  diadesorte: { nome: 'Dia de Sorte', total: 31, sorteados: 7, apostaMin: 7, apostaMax: 15, premios: [7, 6, 5, 4], cols: 8, fechMax: 14, mes: true, cor: '#c58a1a', cor2: '#e6b23f' },
 };
 
 /* ================= Estado (recalculado por loteria) ================= */
@@ -118,6 +118,7 @@ function renderPainel() {
   $('painelCards').innerHTML = cards.map(c => `<div class="stat"><div class="k">${c.k}</div><div class="v">${c.v}</div><div class="s">${c.s}</div></div>`).join('');
   $('lastInfo').textContent = `#${last[0]} · ${last[1]}`;
   $('lastBalls').innerHTML = last[2].map(n => ball(n)).join('');
+  $('lastMes').innerHTML = (L.mes && last[3]) ? `<div style="margin-top:12px;"><span class="tagm" style="background:color-mix(in srgb,var(--gold) 20%,transparent);color:var(--amber);border-color:transparent;font-size:13.5px;padding:6px 13px;">🗓️ Mês da Sorte: <b>${last[3]}</b></span></div>` : '';
 
   // prêmios do último concurso
   if (premiosRef && premiosRef.premios && Object.keys(premiosRef.premios).length) {
@@ -230,6 +231,15 @@ function renderPadroes() {
   }).join('');
 
   renderEvo();
+  renderMeses();
+}
+const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+function renderMeses() {
+  if (!L.mes) { $('mesBlock').style.display = 'none'; return; }
+  $('mesBlock').style.display = '';
+  const cont = {}; MESES.forEach(m => cont[m] = 0);
+  DRAWS.forEach(d => { if (d[3] != null && cont[d[3]] != null) cont[d[3]]++; });
+  $('mesChart').innerHTML = barsRanked(MESES.map(m => ({ label: m, val: cont[m], suffix: String(cont[m]) })));
 }
 function renderEvo() {
   const n = parseInt($('evoSel').value) || NUMS[0];
@@ -851,7 +861,7 @@ function buscarConcurso() {
   if (!found.length) { $('buscaResult').innerHTML = `<div class="note">${porData ? 'Nenhum concurso na data "' + q + '"' : 'Concurso #' + q + ' não encontrado'}. A base vai de #${DRAWS[0][0]} (${DRAWS[0][1]}) a #${DRAWS[N - 1][0]} (${DRAWS[N - 1][1]}).</div>`; return; }
   if (found.length > 12) { $('buscaResult').innerHTML = `<div class="note">${found.length} concursos encontrados — refine a data (ex.: 27/07/2026).</div>`; return; }
   $('buscaResult').innerHTML = found.map((d, i) =>
-    `<div style="margin-bottom:${found.length > 1 ? 10 : 0}px;"><p class="sub" style="margin:0 0 6px;">Concurso #${d[0]} · ${d[1]}${found.length > 1 ? ' · ' + (i + 1) + 'º sorteio' : ''}</p><div class="balls">${d[2].map(x => ball(x, 'sm')).join('')}</div></div>`
+    `<div style="margin-bottom:${found.length > 1 ? 10 : 0}px;"><p class="sub" style="margin:0 0 6px;">Concurso #${d[0]} · ${d[1]}${found.length > 1 ? ' · ' + (i + 1) + 'º sorteio' : ''}</p><div class="balls">${d[2].map(x => ball(x, 'sm')).join('')}</div>${L.mes && d[3] ? `<div style="margin-top:8px;font-size:13px;color:var(--ink-soft);">🗓️ Mês da Sorte: <b>${d[3]}</b></div>` : ''}</div>`
   ).join('');
 }
 $('buscaBtn').addEventListener('click', buscarConcurso);

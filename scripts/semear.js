@@ -36,7 +36,9 @@ function premiosFrom(j) {
       draws.push([c, dt, dez.slice(0, 6).sort((a, b) => a - b)]);
       draws.push([c, dt, dez.slice(6, 12).sort((a, b) => a - b)]);
     } else {
-      draws.push([c, dt, dez.slice().sort((a, b) => a - b)]);
+      const entry = [c, dt, dez.slice().sort((a, b) => a - b)];
+      if (key === 'diadesorte') entry.push(o.mesSorte || o.nomeTimeCoracaoMesSorte || ''); // Mês da Sorte
+      draws.push(entry);
     }
   });
   draws.sort((a, b) => a[0] - b[0]);

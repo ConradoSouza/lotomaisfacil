@@ -23,7 +23,9 @@ function entriesFrom(key, j) {
     if (seg.length) return [[c, dt, dez.slice().sort((a, b) => a - b)], [c, dt, seg.sort((a, b) => a - b)]];
     if (dez.length === 12) return [[c, dt, dez.slice(0, 6).sort((a, b) => a - b)], [c, dt, dez.slice(6, 12).sort((a, b) => a - b)]];
   }
-  return [[c, dt, dez.slice().sort((a, b) => a - b)]];
+  const entry = [c, dt, dez.slice().sort((a, b) => a - b)];
+  if (key === 'diadesorte') entry.push(j.mesSorte || j.nomeTimeCoracaoMesSorte || ''); // Mês da Sorte
+  return [entry];
 }
 function premiosFrom(j) {
   const premios = {}, lista = j.premiacoes || j.listaRateioPremio || [];
