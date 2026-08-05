@@ -551,9 +551,9 @@ function loadMeusFor(k) { try { return JSON.parse(localStorage.getItem(jogosKey(
 function saveMeusFor(k, arr) { try { localStorage.setItem(jogosKey(k), JSON.stringify(arr)); } catch (e) {} }
 function loadMeus() { return loadMeusFor(KEY); }
 function saveMeus() { saveMeusFor(KEY, meusJogos); }
-function addMeusGames(arr, nome) {
+function addMeusGames(arr, nome, mes) {
   const now = Date.now(), alvo = DRAWS[N - 1][0] + 1, cart = 'c' + now;
-  const novos = arr.map((nums, i) => ({ id: now + '-' + i + '-' + Math.random().toString(36).slice(2, 6), nums, created: now, alvo, cart, nome: nome || '' }));
+  const novos = arr.map((nums, i) => { const g = { id: now + '-' + i + '-' + Math.random().toString(36).slice(2, 6), nums, created: now, alvo, cart, nome: nome || '' }; if (mes) g.mes = mes; return g; });
   novos.forEach(j => meusJogos.push(j));
   saveMeus(); renderMeus();
   enviarJogosNuvem(KEY, novos);
@@ -625,7 +625,9 @@ function renderMeus() {
       const sep = multi && idx < g.jogos.length - 1 ? 'border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:7px;' : 'margin-bottom:5px;';
       const num = multi ? `<span style="color:var(--muted);font-size:11px;font-weight:700;flex:none;min-width:14px;">${idx + 1}</span>` : '';
       const delG = multi ? `<button class="chip" data-delg="${g.k}|${j.id}" type="button" style="padding:2px 8px;font-size:11px;flex:none;" title="Excluir este jogo">✕</button>` : '';
-      return `<div style="display:flex;align-items:center;gap:8px;${sep}">${num}<div class="balls" style="flex:1;">${j.nums.map(n => ball(n, g.ctx.lastSet.has(n) ? 'sm gold' : 'sm')).join('')}</div><span class="tagm" style="${win ? 'color:var(--green);border-color:transparent;background:color-mix(in srgb,var(--green) 16%,transparent);' : ''}">${j._hits}${win ? ' 🏆' : ''}</span>${delG}</div>`;
+      const mesOk = j.mes && g.ctx.last && g.ctx.last[3] === j.mes;
+      const mesTag = j.mes ? `<span class="tagm" style="flex:none;${mesOk ? 'color:var(--green);border-color:transparent;background:color-mix(in srgb,var(--green) 16%,transparent);' : ''}" title="Mês da Sorte">🗓️ ${j.mes}${mesOk ? ' ✓' : ''}</span>` : '';
+      return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;${sep}">${num}<div class="balls" style="flex:1;min-width:60%;">${j.nums.map(n => ball(n, g.ctx.lastSet.has(n) ? 'sm gold' : 'sm')).join('')}</div><span class="tagm" style="${win ? 'color:var(--green);border-color:transparent;background:color-mix(in srgb,var(--green) 16%,transparent);' : ''}">${j._hits}${win ? ' 🏆' : ''}</span>${mesTag}${delG}</div>`;
     }).join('');
     return `<div class="game">
       <div class="ghead"><span class="gtitle">${titulo} · ${g.jogos.length} jogo(s) · ${dt}${alvoTxt}</span><span style="display:flex;gap:6px;"><button class="chip" data-rename="${g.gid}" type="button" style="padding:4px 10px;" title="Renomear carrinho">✏️</button><button class="chip" data-wac="${g.gid}" type="button" style="padding:4px 10px;" title="Compartilhar no WhatsApp">📱</button><button class="chip" data-delc="${g.gid}" type="button" style="padding:4px 11px;" title="Excluir carrinho">✕</button></span></div>
@@ -687,6 +689,10 @@ function buildLottery(key) {
   const hottest = [...NUMS].sort((a, b) => freqAll[b] - freqAll[a])[0];
   $('evoSel').innerHTML = options(NUMS, hottest, pad);
   $('meusFiltro').innerHTML = `<option value="">Esta loteria (${L.nome})</option><option value="todas">Todas as loterias</option>` + Object.keys(LOTERIAS).map(k => `<option value="${k}">${LOTERIAS[k].nome}</option>`).join('');
+  const mesOpts = MESES.map(m => `<option value="${m}">${m}</option>`).join('');
+  $('conferirMes').innerHTML = mesOpts; $('meusMes').innerHTML = mesOpts;
+  $('conferirMesWrap').style.display = L.mes ? '' : 'none';
+  $('meusMesWrap').style.display = L.mes ? '' : 'none';
 
   // pickers
   buildPicker($('picker'), selConferir, () => L.apostaMax, conferirMsg);
@@ -834,10 +840,20 @@ $('checkBtn').addEventListener('click', () => {
   const arr = [...chosen].sort((a, b) => a - b), soma = arr.reduce((a, b) => a + b, 0), pares = arr.filter(n => n % 2 === 0).length;
   let grid = ''; L.premios.forEach(h => { const pr = premioDe(h); grid += `<div class="hitbox"><div class="hn">${hits[h] || 0}</div><div class="hl">${h} acertos<br>${((hits[h] || 0) / N * 100).toFixed(2)}%${pr && pr[1] > 0 ? '<br><span style="color:var(--green);font-weight:700;">~' + moneyShort(pr[0]) + '</span>' : ''}</div></div>`; });
   const lp = premioDe(lastHits);
+  // Mês da Sorte (Dia de Sorte)
+  let mesLinhas = '';
+  if (L.mes) {
+    const mes = $('conferirMes').value;
+    const mesAcertos = DRAWS.reduce((c, d) => c + (d[3] === mes ? 1 : 0), 0);
+    const lastMesOk = last[3] === mes;
+    mesLinhas = `<div class="result-line"><span class="k">🗓️ Mês da Sorte (${mes})</span><span class="v">acertou em ${mesAcertos} de ${N} (${(mesAcertos / N * 100).toFixed(1)}%)</span></div>
+      <div class="result-line"><span class="k">Mês no último concurso</span><span class="v" style="${lastMesOk ? 'color:var(--green);' : ''}">${last[3]}${lastMesOk ? ' ✓ acertou!' : ' — não acertou'}</span></div>`;
+  }
   $('checkResults').innerHTML = `<div class="card">
     <div class="result-line"><span class="k">Dezenas</span><span class="v">${arr.map(pad).join(' ')}</span></div>
     <div class="result-line"><span class="k">Soma / Pares</span><span class="v">${soma} · ${pares}P/${arr.length - pares}I</span></div>
     <div class="result-line"><span class="k">No último concurso (#${last[0]})</span><span class="v">${lastHits} acertos${lp && lp[1] > 0 ? ' · pagaria ~' + moneyShort(lp[0]) : ''}</span></div>
+    ${mesLinhas}
     <div class="result-line"><span class="k">Melhor da história</span><span class="v">${best} acertos · #${bestDraw[0]} (${bestDraw[1]})</span></div>
     <h3 style="margin:14px 0 4px;font-size:14px;">Distribuição em ${N} concursos</h3><div class="hitgrid">${grid}</div></div>`;
 });
@@ -845,7 +861,7 @@ $('clearBtn').addEventListener('click', () => { selConferir.clear(); $('picker')
 
 // Meus jogos
 $('meusClear').addEventListener('click', () => { selMeus.clear(); $('meusPicker').querySelectorAll('.pcell').forEach(c => c.classList.remove('sel')); meusMsg(); });
-$('meusAdd').addEventListener('click', () => { if (selMeus.size < L.apostaMin || selMeus.size > L.apostaMax) { $('meusPickMsg').textContent = `Escolha de ${L.apostaMin} a ${L.apostaMax} dezenas.`; return; } addMeusGames([[...selMeus].sort((a, b) => a - b)]); selMeus.clear(); $('meusPicker').querySelectorAll('.pcell').forEach(c => c.classList.remove('sel')); meusMsg(); });
+$('meusAdd').addEventListener('click', () => { if (selMeus.size < L.apostaMin || selMeus.size > L.apostaMax) { $('meusPickMsg').textContent = `Escolha de ${L.apostaMin} a ${L.apostaMax} dezenas.`; return; } addMeusGames([[...selMeus].sort((a, b) => a - b)], '', L.mes ? $('meusMes').value : undefined); selMeus.clear(); $('meusPicker').querySelectorAll('.pcell').forEach(c => c.classList.remove('sel')); meusMsg(); });
 $('meusFiltro').addEventListener('change', renderMeus);
 $('meusOrdem').addEventListener('change', renderMeus);
 $('meusExport').addEventListener('click', exportBackup);
@@ -1070,7 +1086,7 @@ async function puxarJogosNuvem() {
     const { data } = await SB.from('jogos').select('*').eq('user_id', usuario.id);
     if (!data) return;
     const porLot = {};
-    data.forEach(r => { (porLot[r.loteria] = porLot[r.loteria] || []).push({ id: r.id, nums: r.nums, nome: r.nome || '', cart: r.cart, alvo: r.alvo, created: Number(r.created) }); });
+    data.forEach(r => { const o = { id: r.id, nums: r.nums, nome: r.nome || '', cart: r.cart, alvo: r.alvo, created: Number(r.created) }; if (r.mes) o.mes = r.mes; (porLot[r.loteria] = porLot[r.loteria] || []).push(o); });
     Object.keys(porLot).forEach(k => {
       if (!LOTERIAS[k]) return;
       const local = loadMeusFor(k), ids = new Set(local.map(j => j.id));
@@ -1082,7 +1098,7 @@ async function puxarJogosNuvem() {
 }
 async function enviarJogosNuvem(k, jogos) {
   if (!SB || !usuario || !isPro() || !jogos.length) return;
-  const rows = jogos.map(j => ({ id: j.id, user_id: usuario.id, loteria: k, nums: j.nums, nome: j.nome || '', cart: j.cart, alvo: j.alvo, created: j.created }));
+  const rows = jogos.map(j => { const r = { id: j.id, user_id: usuario.id, loteria: k, nums: j.nums, nome: j.nome || '', cart: j.cart, alvo: j.alvo, created: j.created }; if (j.mes) r.mes = j.mes; return r; });
   try { await SB.from('jogos').upsert(rows); } catch (e) {}
 }
 async function removerJogosNuvem(ids) { if (!SB || !usuario || !isPro() || !ids.length) return; try { await SB.from('jogos').delete().in('id', ids); } catch (e) {} }
