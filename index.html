@@ -3,734 +3,273 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Loto+Facil</title>
+<title>Loto+Facil — Análise e gerador de jogos das loterias</title>
+<meta name="description" content="Análise estatística e gerador inteligente de jogos para as loterias da Caixa: Lotofácil, Mega-Sena, Quina, Lotomania, Dupla Sena e Dia de Sorte. Grátis, funciona offline.">
 <meta name="theme-color" content="#6d3bef">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
 <style>
   :root{
-    --violet:#6d3bef; --violet-2:#9a6cff; --violet-soft:#efe9fd;
-    --gold:#e0a01a; --green:#1f9d57; --red:#d64545; --amber:#c77d17; --blue:#2f6bd8;
-    --bg:#f6f4fb; --surface:#ffffff; --surface-2:#f0ecfa; --surface-3:#e9e3f8;
-    --ink:#1c1830; --ink-soft:#4b4666; --muted:#7c7794; --line:#e4dff2;
-    --shadow:0 1px 2px rgba(40,20,90,.05),0 6px 22px rgba(60,30,120,.06);
-    --radius:16px;
-    --sans:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
-    --mono:ui-monospace,'Cascadia Code','SF Mono',Menlo,Consolas,monospace;
-  }
-  @media (prefers-color-scheme:dark){
-    :root{
-      --bg:#100c1c; --surface:#191331; --surface-2:#221a42; --surface-3:#2a2150;
-      --ink:#eee9fb; --ink-soft:#c4bde0; --muted:#948dba; --line:#2c2450;
-      --violet:#8b5cff; --violet-2:#b48bff; --violet-soft:#241a44;
-      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.32);
-    }
-  }
-  :root[data-theme="dark"]{
+    --violet:#8b5cff; --violet-2:#b48bff; --violet-soft:#241a44;
+    --gold:#e0a01a; --green:#1f9d57; --amber:#c77d17;
     --bg:#100c1c; --surface:#191331; --surface-2:#221a42; --surface-3:#2a2150;
     --ink:#eee9fb; --ink-soft:#c4bde0; --muted:#948dba; --line:#2c2450;
-    --violet:#8b5cff; --violet-2:#b48bff; --violet-soft:#241a44;
-    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.32);
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 34px rgba(0,0,0,.34);
+    --radius:18px;
+    --sans:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
   }
-  :root[data-theme="light"]{
-    --bg:#f6f4fb; --surface:#ffffff; --surface-2:#f0ecfa; --surface-3:#e9e3f8;
-    --ink:#1c1830; --ink-soft:#4b4666; --muted:#7c7794; --line:#e4dff2;
-    --violet:#6d3bef; --violet-2:#9a6cff; --violet-soft:#efe9fd;
-    --shadow:0 1px 2px rgba(40,20,90,.05),0 6px 22px rgba(60,30,120,.06);
+  @media (prefers-color-scheme:light){
+    :root{
+      --violet:#6d3bef; --violet-2:#9a6cff; --violet-soft:#efe9fd;
+      --bg:#f6f4fb; --surface:#ffffff; --surface-2:#f0ecfa; --surface-3:#e9e3f8;
+      --ink:#1c1830; --ink-soft:#4b4666; --muted:#7c7794; --line:#e4dff2;
+      --shadow:0 1px 2px rgba(40,20,90,.05),0 8px 26px rgba(60,30,120,.08);
+    }
   }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;}
-  body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;
-    -webkit-font-smoothing:antialiased;padding-bottom:calc(72px + env(safe-area-inset-bottom));}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+  a{color:inherit;text-decoration:none;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px;}
 
-  /* Header */
-  header{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);
-    padding:14px 18px calc(14px) ;display:flex;align-items:center;justify-content:space-between;gap:12px;
-    padding-top:calc(14px + env(safe-area-inset-top));}
-  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:-.02em;}
-  .brand .mark{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(135deg,var(--violet),var(--violet-2));color:#fff;font-size:18px;box-shadow:0 3px 10px rgba(90,50,200,.3);}
+  /* Top bar */
+  header{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;height:64px;padding-top:env(safe-area-inset-top);}
+  .brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:20px;letter-spacing:-.02em;}
+  .brand .mark{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--violet),var(--violet-2));color:#fff;font-size:19px;box-shadow:0 4px 14px rgba(120,70,255,.4);}
   .brand b{color:var(--violet);}
-  .hbtn{background:var(--surface-2);border:1px solid var(--line);color:var(--ink-soft);border-radius:10px;
-    width:38px;height:38px;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
-  .hbtn:active{transform:scale(.94);}
-  #lotSel{background:var(--surface-2);border:1px solid var(--line);color:var(--ink);border-radius:10px;
-    height:38px;padding:0 10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;font-family:inherit;
+    font-weight:700;font-size:15px;border-radius:12px;padding:12px 20px;transition:transform .1s,box-shadow .2s;text-align:center;}
+  .btn:active{transform:scale(.96);}
+  .btn.primary{background:linear-gradient(135deg,var(--violet),var(--violet-2));color:#fff;box-shadow:0 6px 20px rgba(120,70,255,.38);}
+  .btn.ghost{background:var(--surface-2);color:var(--ink);border:1px solid var(--line);}
+  .btn.sm{padding:9px 16px;font-size:14px;}
+  .btn.big{padding:15px 26px;font-size:16px;}
 
-  main{max-width:940px;margin:0 auto;padding:18px 16px 40px;}
-  .tab{display:none;}
-  .tab.active{display:block;animation:fade .25s ease;}
-  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  /* Hero */
+  .hero{position:relative;text-align:center;padding:64px 0 48px;overflow:hidden;}
+  .hero::before{content:"";position:absolute;top:-140px;left:50%;transform:translateX(-50%);width:680px;height:420px;
+    background:radial-gradient(closest-side,rgba(139,92,255,.32),transparent 70%);filter:blur(10px);z-index:-1;}
+  .pill{display:inline-flex;align-items:center;gap:7px;background:var(--surface-2);border:1px solid var(--line);
+    color:var(--ink-soft);font-size:13px;font-weight:700;padding:6px 14px;border-radius:999px;margin-bottom:22px;}
+  .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 25%,transparent);}
+  h1{font-size:clamp(30px,7vw,50px);line-height:1.1;letter-spacing:-.03em;font-weight:850;margin-bottom:18px;}
+  h1 .g{background:linear-gradient(120deg,var(--violet),var(--violet-2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .lead{font-size:clamp(16px,2.4vw,19px);color:var(--ink-soft);max-width:640px;margin:0 auto 30px;}
+  .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+  .micro{margin-top:16px;font-size:13px;color:var(--muted);}
 
-  h2.page{font-size:22px;font-weight:800;letter-spacing:-.015em;margin:2px 0 2px;}
-  p.sub{color:var(--muted);font-size:13px;margin:0 0 16px;}
-  section.block{margin-bottom:20px;}
-  .block h3{font-size:15px;font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:8px;}
-  .block h3 .hint{font-weight:400;color:var(--muted);font-size:12px;}
+  /* Loterias chips */
+  .lots{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:38px;}
+  .lot{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:9px 15px;font-weight:700;font-size:14px;box-shadow:var(--shadow);}
+  .lot .b{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800;}
 
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
-    padding:16px 18px;box-shadow:var(--shadow);}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px;}
-  .stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);}
-  .stat .k{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px;}
-  .stat .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
-  .stat .s{color:var(--muted);font-size:12px;margin-top:2px;}
+  /* Sections */
+  section{padding:52px 0;}
+  .eyebrow{text-align:center;color:var(--violet);font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+  h2{text-align:center;font-size:clamp(24px,4.5vw,34px);letter-spacing:-.02em;font-weight:820;margin-bottom:12px;}
+  .sub{text-align:center;color:var(--ink-soft);max-width:560px;margin:0 auto 40px;font-size:16px;}
 
-  /* Balls */
-  .balls{display:flex;flex-wrap:wrap;gap:7px;}
-  .ball{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    font-weight:700;font-size:14px;color:#fff;font-variant-numeric:tabular-nums;flex:none;
-    background:radial-gradient(circle at 32% 28%,var(--violet-2),var(--violet));
-    box-shadow:0 2px 6px rgba(90,50,200,.28);}
-  .ball.sm{width:32px;height:32px;font-size:12.5px;}
-  .ball.hot{background:radial-gradient(circle at 32% 28%,#ff8a5c,#e5561f);box-shadow:0 2px 6px rgba(200,60,20,.28);}
-  .ball.cold{background:radial-gradient(circle at 32% 28%,#7aa0d8,#3f6bb0);box-shadow:0 2px 6px rgba(40,80,150,.28);}
-  .ball.gold{background:radial-gradient(circle at 32% 28%,#f4c04d,var(--gold));box-shadow:0 2px 6px rgba(200,140,10,.3);}
-  .ball.ghost{background:var(--surface-2);color:var(--muted);border:1px dashed var(--line);box-shadow:none;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
+  .card .ic{width:48px;height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:24px;
+    background:var(--violet-soft);margin-bottom:15px;}
+  .card h3{font-size:18px;font-weight:800;margin-bottom:7px;letter-spacing:-.01em;}
+  .card p{color:var(--ink-soft);font-size:14.5px;}
+  .card .tag{display:inline-block;margin-top:11px;font-size:11px;font-weight:800;letter-spacing:.03em;padding:3px 9px;border-radius:6px;
+    background:color-mix(in srgb,var(--gold) 20%,transparent);color:var(--amber);}
 
-  /* Bars */
-  .barline{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:12.5px;}
-  .barline .bl{min-width:34px;white-space:nowrap;color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums;}
-  .barline .bt{flex:1;background:var(--surface-2);border-radius:5px;height:15px;overflow:hidden;}
-  .barline .bf{height:100%;background:linear-gradient(90deg,var(--violet),var(--violet-2));border-radius:5px;transition:width .4s;}
-  .barline .bf.hot{background:linear-gradient(90deg,#e5561f,#ff8a5c);}
-  .barline .bf.cold{background:linear-gradient(90deg,#3f6bb0,#7aa0d8);}
-  .barline .bf.peak{background:linear-gradient(90deg,var(--gold),#f7c948);}
-  .barline .bf.strong{background:linear-gradient(90deg,var(--violet),var(--violet-2));}
-  .barline .bf.low{background:linear-gradient(90deg,#a49fbe,#c3bedb);opacity:.65;}
-  .barline.peak .bl{color:var(--gold);}
-  .barline.peak .bt{box-shadow:0 0 0 1.5px color-mix(in srgb,var(--gold) 55%,transparent);}
-  .barline .bv{width:auto;min-width:40px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:6px;justify-content:flex-end;}
-  .peaktag{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:#5a3d00;
-    background:var(--gold);border-radius:5px;padding:1px 6px;line-height:1.5;}
+  /* Steps */
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;counter-reset:s;}
+  .step{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);position:relative;}
+  .step::before{counter-increment:s;content:counter(s);position:absolute;top:20px;right:22px;font-size:38px;font-weight:850;color:var(--violet-soft);}
+  .step h3{font-size:17px;font-weight:800;margin-bottom:6px;}
+  .step p{color:var(--ink-soft);font-size:14.5px;}
 
-  /* Table */
-  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:420px;}
-  th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;}
-  th{color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;
-    cursor:pointer;user-select:none;position:sticky;top:0;background:var(--surface);white-space:nowrap;}
-  th.act{color:var(--violet);}
-  tbody tr:active td{background:var(--surface-2);}
-  .scorechip{display:inline-flex;align-items:center;justify-content:center;min-width:34px;padding:2px 8px;border-radius:20px;
-    font-weight:800;font-size:12.5px;color:#fff;}
+  /* Planos */
+  .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;max-width:720px;margin:0 auto;}
+  .plan{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:28px 24px;box-shadow:var(--shadow);}
+  .plan.pro{border-color:var(--violet);position:relative;box-shadow:0 8px 30px rgba(120,70,255,.22);}
+  .plan .flag{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--violet),var(--violet-2));
+    color:#fff;font-size:11px;font-weight:800;letter-spacing:.05em;padding:4px 13px;border-radius:999px;}
+  .plan .name{font-weight:800;font-size:17px;}
+  .plan .price{font-size:32px;font-weight:850;margin:10px 0 2px;letter-spacing:-.02em;}
+  .plan .price small{font-size:14px;font-weight:600;color:var(--muted);}
+  .plan ul{list-style:none;margin:16px 0 0;}
+  .plan li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;font-size:14.5px;color:var(--ink-soft);border-top:1px solid var(--line);}
+  .plan li:first-child{border-top:none;}
+  .plan li .ck{color:var(--green);font-weight:800;flex:none;}
 
-  /* Controls */
-  label.field{display:block;margin-bottom:12px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
-  select,input[type=number],input[type=text],input[type=email],input[type=password]{width:100%;margin-top:6px;background:var(--surface-2);border:1px solid var(--line);
-    color:var(--ink);border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;}
-  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;background:var(--surface-3);outline:none;margin:9px 0 0;padding:0;}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:19px;height:19px;border-radius:50%;background:var(--violet);cursor:pointer;box-shadow:0 2px 6px rgba(90,50,200,.4);}
-  input[type=range]::-moz-range-thumb{width:19px;height:19px;border:none;border-radius:50%;background:var(--violet);cursor:pointer;box-shadow:0 2px 6px rgba(90,50,200,.4);}
-  .wrow{margin-bottom:13px;}
-  .wrow:last-child{margin-bottom:0;}
-  .wrow .wl{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:700;}
-  .wrow .wl .wp{color:var(--violet);font-variant-numeric:tabular-nums;font-size:13px;}
-  .bignum{display:flex;align-items:baseline;gap:10px;margin:2px 0 4px;}
-  .bignum .b{font-size:40px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--violet);}
-  .bignum .bd{font-size:13px;color:var(--muted);}
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-  .btn{background:var(--violet);color:#fff;border:none;border-radius:12px;padding:13px 18px;font-size:15px;
-    font-weight:700;cursor:pointer;width:100%;box-shadow:0 4px 14px rgba(90,50,200,.28);}
-  .btn:active{transform:translateY(1px);}
-  .btn.sec{background:var(--surface-2);color:var(--ink);box-shadow:none;border:1px solid var(--line);}
+  /* Install band */
+  .install{background:linear-gradient(135deg,var(--surface-2),var(--surface-3));border:1px solid var(--line);border-radius:24px;
+    padding:40px 28px;text-align:center;box-shadow:var(--shadow);}
+  .install .appicon{width:72px;height:72px;border-radius:20px;margin:0 auto 16px;display:block;box-shadow:0 8px 24px rgba(120,70,255,.4);}
+  .iosHint{display:none;margin-top:14px;font-size:13.5px;color:var(--ink-soft);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 15px;max-width:420px;margin-left:auto;margin-right:auto;}
 
-  /* Strategy chips */
-  .chips{display:flex;flex-wrap:wrap;gap:8px;}
-  .chip{font-size:13px;font-weight:700;padding:8px 14px;border-radius:22px;border:1px solid var(--line);
-    background:var(--surface);color:var(--ink-soft);cursor:pointer;transition:.15s;}
-  .chip.on{background:var(--violet);color:#fff;border-color:var(--violet);box-shadow:0 3px 10px rgba(90,50,200,.25);}
-  .chip:active{transform:scale(.96);}
+  /* Footer */
+  footer{border-top:1px solid var(--line);padding:34px 0 46px;margin-top:24px;}
+  footer .wrap{text-align:center;color:var(--muted);font-size:13px;}
+  .disc{max-width:560px;margin:0 auto 16px;font-size:12.5px;line-height:1.6;}
+  .plus18{display:inline-flex;align-items:center;gap:6px;font-weight:800;color:var(--amber);}
 
-  .toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);}
-  .toggle-row:last-child{border-bottom:none;}
-  .toggle-row .tl{font-weight:700;font-size:14px;}
-  .toggle-row .td{font-size:12px;color:var(--muted);margin-top:1px;}
-  .sw{position:relative;width:46px;height:27px;flex:none;}
-  .sw input{opacity:0;width:0;height:0;position:absolute;}
-  .sw .track{position:absolute;inset:0;background:var(--surface-3);border:1px solid var(--line);border-radius:20px;transition:.2s;}
-  .sw .track::before{content:"";position:absolute;width:21px;height:21px;left:3px;top:2px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25);}
-  .sw input:checked + .track{background:var(--violet);border-color:var(--violet);}
-  .sw input:checked + .track::before{transform:translateX(19px);}
-  .seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap;}
-  .seg button{border:none;background:none;color:var(--ink-soft);font-weight:700;font-size:12.5px;padding:6px 11px;border-radius:8px;cursor:pointer;font-family:inherit;}
-  .seg button.on{background:var(--violet);color:#fff;}
-
-  /* Generated game card */
-  .game{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 15px;margin-bottom:12px;box-shadow:var(--shadow);}
-  .game .ghead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-  .game .gtitle{font-weight:800;font-size:14px;}
-  .game .gmeta{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;}
-  .tagm{font-size:11px;font-weight:700;color:var(--ink-soft);background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:3px 8px;}
-  .tagm b{color:var(--violet);}
-
-  /* number picker grid */
-  .picker{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:320px;margin:0 auto 14px;}
-  .pcell{aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;
-    font-size:15px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-soft);cursor:pointer;font-variant-numeric:tabular-nums;}
-  .pcell.sel{background:radial-gradient(circle at 32% 28%,var(--violet-2),var(--violet));color:#fff;border-color:transparent;box-shadow:0 3px 8px rgba(90,50,200,.3);}
-  .pcell.fixa{background:radial-gradient(circle at 32% 28%,#4cd07d,var(--green));color:#fff;border-color:transparent;box-shadow:0 3px 8px rgba(20,140,70,.3);}
-  .pcell.excl{background:var(--surface-2);color:var(--red);border-color:var(--red);text-decoration:line-through;opacity:.75;}
-
-  .result-line{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;}
-  .result-line:last-child{border-bottom:none;}
-  .result-line .k{color:var(--muted);}
-  .result-line .v{font-weight:700;text-align:right;font-variant-numeric:tabular-nums;}
-  .hitgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;margin-top:12px;}
-  .hitbox{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;}
-  .hitbox .hn{font-size:22px;font-weight:800;color:var(--violet);font-variant-numeric:tabular-nums;}
-  .hitbox .hl{font-size:11px;color:var(--muted);margin-top:2px;}
-
-  .note{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:12.5px;color:var(--ink-soft);}
-  .note b{color:var(--ink);}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-  @media(max-width:620px){.grid2{grid-template-columns:1fr;}}
-
-  /* Bottom nav */
-  nav.tabbar{position:fixed;bottom:0;left:0;right:0;z-index:30;background:var(--surface);
-    border-top:1px solid var(--line);display:flex;justify-content:space-around;
-    padding:6px 4px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -4px 18px rgba(60,30,120,.05);}
-  nav.tabbar button{flex:1;min-width:0;background:none;border:none;color:var(--muted);font-family:inherit;font-size:9.5px;
-    font-weight:700;padding:6px 1px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;border-radius:10px;}
-  nav.tabbar button .ic{font-size:19px;line-height:1;}
-  nav.tabbar button.active{color:var(--violet);}
-  nav.tabbar button.active .ic{transform:translateY(-1px);}
-
-  .footer-note{color:var(--muted);font-size:11.5px;text-align:center;margin-top:26px;line-height:1.5;}
-
-  /* Banner de conferência automática */
-  .banner{background:linear-gradient(135deg,color-mix(in srgb,var(--violet) 12%,var(--surface)),var(--surface));
-    border:1px solid var(--line);border-left:4px solid var(--violet);border-radius:14px;padding:12px 15px;margin-bottom:16px;
-    display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);animation:fade .3s ease;}
-  .banner.win{border-left-color:var(--green);background:linear-gradient(135deg,color-mix(in srgb,var(--green) 15%,var(--surface)),var(--surface));}
-  .banner .bi{font-size:23px;flex:none;line-height:1;}
-  .banner .bt{font-size:13.5px;line-height:1.42;color:var(--ink-soft);}
-  .banner .bt b{color:var(--ink);}
-  .banner .bx{margin-left:auto;background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;flex:none;padding:4px;}
-  .badge-new{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#fff;background:var(--violet);border-radius:20px;padding:2px 8px;margin-right:6px;vertical-align:middle;}
-
-  /* Botão "?" de ajuda contextual */
-  .qbtn{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;
-    border:1px solid var(--line);background:var(--surface-2);color:var(--violet);font-size:11px;font-weight:800;
-    cursor:pointer;vertical-align:middle;margin-left:7px;padding:0;font-family:inherit;flex:none;}
-  .qbtn:active{transform:scale(.9);}
-  .qbtn.on{background:var(--violet);color:#fff;border-color:var(--violet);}
-  /* Balãozinho de explicação por item */
-  .tip-pop{position:absolute;z-index:200;max-width:min(300px,84vw);background:var(--surface);color:var(--ink-soft);
-    border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:13px;line-height:1.5;
-    box-shadow:0 10px 34px rgba(40,20,90,.24);animation:pop .14s ease;}
-  .tip-pop b{color:var(--ink);}
-  .tip-pop::after{content:"";position:absolute;top:-7px;width:12px;height:12px;background:var(--surface);
-    border-left:1px solid var(--line);border-top:1px solid var(--line);transform:rotate(45deg);left:var(--arrow,16px);}
-  .tip-pop.above::after{top:auto;bottom:-7px;transform:rotate(225deg);}
-  @keyframes pop{from{opacity:0;transform:translateY(4px) scale(.97);}to{opacity:1;transform:none;}}
-  /* Legenda inline de cores */
-  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--muted);}
-  .legend .li{display:flex;align-items:center;gap:6px;}
-  .legend .dot{width:14px;height:14px;border-radius:50%;flex:none;}
-
-  /* Modal do glossário */
-  .modal{position:fixed;inset:0;z-index:100;background:rgba(10,6,25,.55);display:flex;align-items:flex-end;justify-content:center;}
-  @media(min-width:640px){.modal{align-items:center;padding:20px;}}
-  .modal-card{background:var(--surface);border:1px solid var(--line);border-radius:20px 20px 0 0;width:100%;
-    max-width:620px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 -12px 44px rgba(0,0,0,.35);
-    animation:slideup .25s ease;}
-  @media(min-width:640px){.modal-card{border-radius:20px;max-height:85vh;}}
-  @keyframes slideup{from{transform:translateY(24px);opacity:.4;}to{transform:translateY(0);opacity:1;}}
-  .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line);}
-  .modal-head h2{margin:0;font-size:18px;}
-  .modal-body{overflow-y:auto;padding:4px 20px 26px;}
-  .gloss-group{margin-top:20px;}
-  .gloss-group h3{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--violet);margin:0 0 6px;font-weight:800;}
-  .gloss{padding:9px 0;border-bottom:1px solid var(--line);}
-  .gloss:last-child{border-bottom:none;}
-  .gloss > b{display:block;font-size:14px;margin-bottom:2px;color:var(--ink);}
-  .gloss span b{color:var(--ink);}
-  .gloss span{font-size:13px;color:var(--ink-soft);}
-  .gloss .sw{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:middle;margin-right:5px;}
+  @media(max-width:560px){ .hero{padding:44px 0 36px;} section{padding:42px 0;} .btn.hideSm{display:none;} }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="brand"><span class="mark">🍀</span> Loto<b>+</b>Facil</div>
-  <div style="display:flex;gap:8px;align-items:center;">
-    <select id="lotSel" title="Escolher loteria">
-      <option value="lotofacil">Lotofácil</option>
-      <option value="megasena">Mega-Sena</option>
-      <option value="quina">Quina</option>
-      <option value="lotomania">Lotomania</option>
-      <option value="duplasena">Dupla Sena</option>
-      <option value="diadesorte">Dia de Sorte</option>
-    </select>
-    <button class="hbtn" id="contaBtn" title="Minha conta">👤</button>
-    <button class="hbtn" id="helpBtn" title="Ajuda / glossário">?</button>
-    <button class="hbtn" id="themeBtn" title="Alternar tema">◐</button>
+  <div class="wrap">
+    <div class="brand"><span class="mark">🍀</span>Loto<b>+</b>Facil</div>
+    <a class="btn primary sm" href="app.html">Abrir o app →</a>
   </div>
 </header>
 
-<main>
-  <!-- PAINEL -->
-  <section id="tab-painel" class="tab active">
-    <h2 class="page">Painel</h2>
-    <p class="sub" id="painelSub">Carregando…</p>
-    <div id="autoConf"></div>
-    <div id="installBox"></div>
-    <div class="cards" id="painelCards"></div>
-    <section class="block">
-      <h3>Último concurso <span class="hint" id="lastInfo"></span></h3>
-      <div class="card"><div class="balls" id="lastBalls"></div><div id="lastMes"></div></div>
-    </section>
-    <section class="block" id="premiosBlock" style="display:none;">
-      <h3>💰 Prêmios do último concurso <button class="qbtn" data-tip="Quanto cada faixa de acertos pagou no último concurso, e quantas pessoas ganharam. 'Acumulou' = ninguém acertou aquela faixa.">?</button></h3>
-      <div class="card" id="painelPremios"></div>
-    </section>
-    <section class="block">
-      <h3>🔬 Raio-X do último concurso <button class="qbtn" data-tip="Como o último resultado se compara ao 'normal' do histórico: soma, pares/ímpares, quantas dezenas repetiram do concurso anterior, distribuição por faixas e sequências.">?</button></h3>
-      <div class="card" id="raioX"></div>
-    </section>
-    <section class="block">
-      <h3>🔎 Ver outro concurso</h3>
-      <div class="card">
-        <div style="display:flex;gap:8px;align-items:stretch;">
-          <input type="text" inputmode="numeric" id="buscaConc" placeholder="nº ou data (dd/mm/aaaa)" style="flex:1;max-width:230px;margin-top:0;">
-          <button class="btn" id="buscaBtn" style="width:auto;padding:11px 20px;">Ver</button>
-        </div>
-        <div id="buscaResult" style="margin-top:12px;"></div>
-      </div>
-    </section>
-    <div class="grid2">
-      <section class="block">
-        <h3>🔥 Mais quentes <span class="hint">as que mais saíram</span><button class="qbtn" data-tip="<b>Mais quentes:</b> as dezenas que <b>mais saíram</b> em todo o histórico (maior frequência). Atenção: 'quente' não fica mais provável — o sorteio é aleatório.">?</button></h3>
-        <div class="card" id="hotList"></div>
-      </section>
-      <section class="block">
-        <h3>❄️ Mais atrasadas <span class="hint">há mais tempo sem sair</span><button class="qbtn" data-tip="<b>Mais atrasadas:</b> as dezenas que estão há <b>mais concursos sem sair</b>. 'Atrasada' também não fica mais provável de sair.">?</button></h3>
-        <div class="card" id="coldList"></div>
-      </section>
+<!-- HERO -->
+<div class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span>Resultados sempre atualizados</span>
+    <h1>Jogue com <span class="g">estratégia</span>,<br>não no escuro.</h1>
+    <p class="lead">Análise estatística e gerador inteligente de jogos para as <b>6 principais loterias da Caixa</b>. Veja padrões, gere jogos por estratégia, monte fechamentos e confira seus bilhetes automaticamente — tudo num app rápido que funciona até offline.</p>
+    <div class="cta">
+      <a class="btn primary big" href="app.html">🍀 Começar agora — é grátis</a>
+      <button class="btn ghost big" id="installTop">📲 Instalar no celular</button>
     </div>
-  </section>
+    <div class="micro">Sem cadastro para começar • Funciona offline • 100% em português</div>
 
-  <!-- DEZENAS -->
-  <section id="tab-dezenas" class="tab">
-    <h2 class="page">Dezenas <button class="qbtn" data-tip="<b>Score</b> (0–100): junta frequência, atraso, repetição e afinidade — é um ranking, <b>não previsão</b>. <b>Atraso</b>: concursos sem sair. <b>Máx</b>: maior atraso já registrado.">?</button></h2>
-    <p class="sub">Score de 0–100 de cada dezena, combinando frequência, atraso, repetição e afinidade. Toque nos títulos para ordenar.</p>
-    <section class="block">
-      <label class="field">Janela de análise
-        <div class="seg" id="janelaSeg" style="margin-top:6px;">
-          <button data-j="20">20</button>
-          <button data-j="50">50</button>
-          <button data-j="100" class="on">100</button>
-          <button data-j="500">500</button>
-          <button data-j="0">Tudo</button>
-        </div>
-      </label>
-    </section>
-    <div class="card tbl-wrap">
-      <table id="dezTable">
-        <thead><tr>
-          <th data-k="n" title="Número / dezena">Nº</th>
-          <th data-k="score" class="act" title="Nota 0–100 (freq + atraso + repetição + afinidade). Ranking, não previsão.">Score</th>
-          <th data-k="freq" title="Vezes que saiu na janela escolhida">Freq.</th>
-          <th data-k="pct" title="Frequência em porcentagem">%</th>
-          <th data-k="atraso" title="Concursos desde a última vez que saiu (0 = saiu no último)">Atraso</th>
-          <th data-k="maxAtraso" title="Maior atraso já registrado na história">Máx</th>
-        </tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- PADROES -->
-  <section id="tab-padroes" class="tab">
-    <h2 class="page">Padrões <button class="qbtn" data-tip="Como os sorteios se comportam: pares/ímpares, soma, faixas, repetição do concurso anterior e duplas que mais saem juntas. O selo dourado marca o <b>mais comum</b>.">?</button></h2>
-    <p class="sub">Como os sorteios se comportam no histórico. Bom para entender o que é "normal" na Lotofácil.</p>
-    <div class="grid2">
-      <section class="block"><h3>Pares por sorteio</h3><div class="card" id="parChart"></div></section>
-      <section class="block"><h3>Soma dos 15 <span class="hint" id="somaHint"></span></h3><div class="card" id="somaChart"></div></section>
-    </div>
-    <div class="grid2">
-      <section class="block"><h3>Faixas do volante</h3><div class="card" id="faixaChart"></div></section>
-      <section class="block"><h3>Repetição do anterior</h3><div class="card" id="repChart"></div></section>
-    </div>
-    <section class="block">
-      <h3>🔗 Duplas que mais saem juntas <span class="hint">todo o histórico</span></h3>
-      <div class="card" id="afinList"></div>
-    </section>
-    <section class="block" id="mesBlock" style="display:none;">
-      <h3>🗓️ Mês da Sorte mais sorteado <span class="hint">todo o histórico</span></h3>
-      <div class="card" id="mesChart"></div>
-    </section>
-    <section class="block">
-      <h3>📈 Evolução de uma dezena <button class="qbtn" data-tip="Quantas vezes a dezena saiu em cada bloco de concursos ao longo do tempo. Ajuda a ver se ela vem 'esquentando' ou 'esfriando' — lembrando que o sorteio é aleatório.">?</button></h3>
-      <div class="card">
-        <label class="field" style="max-width:200px;">Dezena
-          <select id="evoSel"></select>
-        </label>
-        <p class="sub" id="evoDesc" style="margin:8px 0 12px;"></p>
-        <div id="evoChart"></div>
-      </div>
-    </section>
-  </section>
-
-  <!-- GERAR -->
-  <section id="tab-gerar" class="tab">
-    <h2 class="page">Gerar jogos <button class="qbtn" data-tip="<b>Estratégia</b>: jeito pronto de montar o jogo. <b>Filtros</b>: regras (repetir do último, pares/ímpares, soma, faixas). <b>Fechamento</b>: bolão com garantia de prêmio mínimo.">?</button></h2>
-    <div class="seg" id="gerToggle" style="margin:2px 0 16px;">
-      <button data-mode="estrategia" class="on">Por estratégia</button>
-      <button data-mode="fechamento">Fechamento</button>
-    </div>
-
-    <div id="genMode">
-    <p class="sub">Escolha uma estratégia pronta ou ajuste os filtros do seu jeito. O app monta jogos que respeitam seus critérios.</p>
-
-    <section class="block">
-      <h3>⚡ Geração rápida <button class="qbtn" data-tip="Surpresinha: um jogo aleatório num toque. Da data: gera um jogo a partir de uma data (ex.: seu aniversário) — a mesma data sempre gera o mesmo jogo. É só diversão; não muda a chance.">?</button></h3>
-      <div class="card">
-        <button class="chip" id="surpresinha" type="button" style="font-size:14px;padding:9px 16px;">🎲 Surpresinha</button>
-        <div style="display:flex;gap:8px;align-items:stretch;margin-top:12px;">
-          <input type="text" inputmode="numeric" id="dataSorte" placeholder="sua data (dd/mm/aaaa)" style="flex:1;max-width:230px;margin-top:0;">
-          <button class="btn" id="dataBtn" style="width:auto;padding:11px 16px;">🍀 Da data</button>
-        </div>
-      </div>
-    </section>
-
-    <section class="block">
-      <h3>Estratégias prontas <span class="hint">um toque configura os filtros</span></h3>
-      <div class="chips" id="presetChips">
-        <span class="chip on" data-preset="equilibrada">Equilibrada</span>
-        <span class="chip" data-preset="repeticao">Repetição</span>
-        <span class="chip" data-preset="quentes">Quentes</span>
-        <span class="chip" data-preset="frias">Atrasadas</span>
-        <span class="chip" data-preset="afinidade">Afinidade</span>
-        <span class="chip" data-preset="aleatorio">Aleatório</span>
-      </div>
-    </section>
-
-    <section class="block">
-      <h3>Dezenas fixas / excluídas <span class="hint">opcional</span><button class="qbtn" data-tip="Toque numa dezena para alternar: <b>fixa</b> (verde, sempre entra), <b>excluída</b> (vermelha, nunca entra) ou neutra. Trave seus números da sorte ou tire os que não quer.">?</button></h3>
-      <div class="card">
-        <div class="picker" id="fixPicker" style="margin-bottom:10px;"></div>
-        <div class="legend" style="justify-content:center;">
-          <span class="li"><span class="dot" style="background:var(--green);"></span>fixa (sempre entra)</span>
-          <span class="li"><span class="dot" style="background:var(--red);"></span>excluída (nunca entra)</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="block">
-      <h3>Filtros</h3>
-      <div class="card">
-        <div class="toggle-row">
-          <div><div class="tl">Repetir do último concurso</div><div class="td" id="repDesc">8 a 10 dezenas do último resultado</div></div>
-          <label class="sw"><input type="checkbox" id="fRep" checked><span class="track"></span></label>
-        </div>
-        <div class="toggle-row">
-          <div><div class="tl">Equilíbrio pares/ímpares</div><div class="td">prioriza 7/8 ou 8/7</div></div>
-          <label class="sw"><input type="checkbox" id="fPar" checked><span class="track"></span></label>
-        </div>
-        <div class="toggle-row">
-          <div><div class="tl">Soma na faixa típica</div><div class="td" id="somaDesc">próxima da média do histórico</div></div>
-          <label class="sw"><input type="checkbox" id="fSoma" checked><span class="track"></span></label>
-        </div>
-        <div class="toggle-row">
-          <div><div class="tl">Distribuir pelas faixas</div><div class="td">evita concentrar numa região do volante</div></div>
-          <label class="sw"><input type="checkbox" id="fFaixa" checked><span class="track"></span></label>
-        </div>
-        <div class="toggle-row">
-          <div><div class="tl">Peso por Score</div><div class="td">favorece dezenas melhor ranqueadas na janela</div></div>
-          <label class="sw"><input type="checkbox" id="fScore" checked><span class="track"></span></label>
-        </div>
-      </div>
-    </section>
-
-    <section class="block">
-      <div class="row2">
-        <label class="field">Dezenas por jogo
-          <select id="genQtd"></select>
-        </label>
-        <label class="field">Quantos jogos
-          <input type="number" id="genCount" value="5" min="1" max="20">
-        </label>
-      </div>
-      <button class="btn" id="genBtn">Gerar jogos</button>
-    </section>
-
-    <div id="genResults"></div>
-    <p class="footer-note" style="margin-top:8px;">Os filtros moldam a composição do jogo — não aumentam a chance real de acerto. A Lotofácil é aleatória.</p>
-    </div><!-- /genMode -->
-
-    <div id="fechMode" style="display:none;">
-      <p class="sub">Escolha um bolão de dezenas e gere um conjunto reduzido de jogos com <b>garantia de prêmio mínimo</b> — se as 15 sorteadas estiverem entre as suas dezenas.</p>
-      <div class="picker" id="fechPicker"></div>
-      <p class="sub" id="fechMsg" style="text-align:center;"></p>
-      <div class="row2">
-        <label class="field">Garantia
-          <select id="fechGar"></select>
-        </label>
-        <label class="field">Preço por jogo (R$)
-          <input type="number" id="fechPrice" value="3.00" step="0.50" min="0">
-        </label>
-      </div>
-      <button class="btn" id="fechBtn">Gerar fechamento</button>
-      <div id="fechResult"></div>
-      <p class="footer-note" style="margin-top:8px;">O fechamento reduz o custo, mas <b>não aumenta</b> a chance de acertar as 15. Só garante um prêmio menor se você acertar todas as 15 dentro do seu bolão.</p>
-    </div><!-- /fechMode -->
-  </section>
-
-  <!-- CONFERIR -->
-  <section id="tab-conferir" class="tab">
-    <h2 class="page">Conferir jogo <button class="qbtn" data-tip="Escolha suas dezenas e veja quantas você acertaria em <b>cada concurso da história</b> e no último.">?</button></h2>
-    <p class="sub">Escolha de 15 a 18 dezenas e veja como esse jogo teria se saído em todos os concursos, e quanto acertaria no último.</p>
-    <div class="picker" id="picker"></div>
-    <p class="sub" id="pickMsg" style="text-align:center;"></p>
-    <div id="conferirMesWrap" style="display:none;max-width:320px;margin:0 auto 14px;">
-      <label class="field">🗓️ Mês da Sorte<select id="conferirMes"></select></label>
-    </div>
-    <div class="row2" style="max-width:320px;margin:0 auto 16px;">
-      <button class="btn" id="checkBtn">Analisar</button>
-      <button class="btn sec" id="clearBtn">Limpar</button>
-    </div>
-    <div id="checkResults"></div>
-  </section>
-
-  <!-- LABORATÓRIO -->
-  <section id="tab-lab" class="tab">
-    <h2 class="page">Laboratório <button class="qbtn" data-tip="<b>Backtest</b>: testa a estratégia no passado sem 'espiar' o futuro. <b>Esperado pelo acaso</b>: mostra que nada vence o sorteio. <b>Monte Carlo</b>: estima sua chance de prêmio.">?</button></h2>
-    <p class="sub">Monte uma estratégia ajustando o peso de cada critério do Score e teste como ela teria se saído no histórico real — sem "espiar" o futuro (backtesting walk-forward).</p>
-
-    <section class="block">
-      <h3>Pesos da estratégia <span class="hint" id="wSum"></span></h3>
-      <div class="card" id="weightBox"></div>
-      <div class="chips" style="margin-top:12px;" id="labPresets">
-        <span class="chip on" data-lp="equilibrado">Equilibrado</span>
-        <span class="chip" data-lp="frequencia">Frequência</span>
-        <span class="chip" data-lp="atraso">Atrasadas</span>
-        <span class="chip" data-lp="recencia">Recência</span>
-      </div>
-    </section>
-
-    <section class="block">
-      <div class="row2">
-        <label class="field">Dezenas por jogo
-          <select id="labTopK"></select>
-        </label>
-        <label class="field">Testar sobre
-          <select id="labRange">
-            <option value="100">últimos 100</option>
-            <option value="500">últimos 500</option>
-            <option value="1000" selected>últimos 1000</option>
-            <option value="0">todo o histórico</option>
-          </select>
-        </label>
-      </div>
-      <button class="btn" id="labRun">Rodar backtest</button>
-    </section>
-
-    <div id="labResult"></div>
-
-    <section class="block" id="labCompareWrap" style="display:none;">
-      <h3>Comparação de estratégias</h3>
-      <div class="card tbl-wrap">
-        <table id="labTable">
-          <thead><tr><th>Estratégia</th><th>Média</th><th>vs acaso</th><th>15 pts</th><th>14 pts</th><th>13 pts</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="block" style="margin-top:22px;">
-      <h3>🎲 Monte Carlo <span class="hint">quantos jogos vale a pena jogar?</span></h3>
-      <p class="sub" style="margin-bottom:14px;">Simula milhares de concursos aleatórios para estimar sua chance real de prêmio jogando vários jogos por concurso.</p>
-      <div class="row2">
-        <label class="field">Jogos por concurso
-          <input type="number" id="mcGames" value="10" min="1" max="200">
-        </label>
-        <label class="field">Simulações
-          <select id="mcTrials">
-            <option value="5000">5.000</option>
-            <option value="20000" selected>20.000</option>
-            <option value="50000">50.000</option>
-          </select>
-        </label>
-      </div>
-      <button class="btn" id="mcRun">Simular</button>
-      <div id="mcResult"></div>
-    </section>
-
-    <div class="note" style="margin-top:12px;">
-      <b>Como ler:</b> a "média de acertos esperada pelo acaso" é <b>dezenas × 0,6</b> (15 dezenas → 9,0). Você vai notar que, mudando os pesos, a média mal se move dela — porque a Lotofácil é aleatória e nenhuma estratégia prevê o sorteio. O backtest serve para <b>estudar e comparar</b>, com honestidade.
-    </div>
-  </section>
-
-  <!-- MEUS JOGOS -->
-  <section id="tab-meus" class="tab">
-    <h2 class="page">Meus jogos <button class="qbtn" data-tip="Salve suas apostas; a cada concurso as bolinhas <b>douradas</b> mostram o que você acertou (🏆 = ganhou prêmio).">?</button></h2>
-    <p class="sub">Salve suas apostas e acompanhe os acertos a cada novo concurso. Ficam guardadas neste aparelho.</p>
-    <div class="legend">
-      <span class="li"><span class="dot" style="background:radial-gradient(circle at 32% 28%,#f4c04d,#e0a01a);"></span>acertou (saiu no concurso)</span>
-      <span class="li"><span class="dot" style="background:radial-gradient(circle at 32% 28%,var(--violet-2),var(--violet));"></span>não saiu</span>
-      <span class="li">🏆 = ganhou prêmio</span>
-    </div>
-    <section class="block">
-      <h3>Adicionar aposta <span class="hint">15 a 20 dezenas</span></h3>
-      <div class="card">
-        <div class="picker" id="meusPicker"></div>
-        <p class="sub" id="meusPickMsg" style="text-align:center;"></p>
-        <div id="meusMesWrap" style="display:none;max-width:340px;margin:0 auto 12px;">
-          <label class="field">🗓️ Mês da Sorte<select id="meusMes"></select></label>
-        </div>
-        <div class="row2" style="max-width:340px;margin:0 auto;">
-          <button class="btn" id="meusAdd">Salvar aposta</button>
-          <button class="btn sec" id="meusClear">Limpar</button>
-        </div>
-      </div>
-    </section>
-    <section class="block">
-      <h3>Apostas salvas <span class="hint" id="meusCount"></span></h3>
-      <div class="card" style="margin-bottom:12px;">
-        <div class="row2">
-          <label class="field">Mostrar<select id="meusFiltro"></select></label>
-          <label class="field">Ordenar<select id="meusOrdem"><option value="rec">Mais recentes</option><option value="best">Melhor no histórico</option></select></label>
-        </div>
-        <div class="chips">
-          <button class="chip" id="meusExport" type="button">💾 Exportar backup</button>
-          <button class="chip" id="meusImport" type="button">📂 Importar backup</button>
-          <input type="file" id="meusImportFile" accept="application/json,.json" style="display:none;">
-        </div>
-      </div>
-      <div id="meusList"></div>
-    </section>
-  </section>
-
-  <div class="footer-note">Loto+Facil · ferramenta estatística e educativa · não garante resultado · base até o concurso <span id="footN"></span><br><button id="aboutBtn" style="background:none;border:none;color:var(--violet);font-weight:700;cursor:pointer;font-family:inherit;font-size:12px;margin-top:6px;padding:4px;">Sobre o app</button></div>
-</main>
-
-<div id="helpModal" class="modal" style="display:none;">
-  <div class="modal-card">
-    <div class="modal-head">
-      <h2>Glossário — entenda os termos</h2>
-      <button class="hbtn" id="helpClose" title="Fechar">✕</button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:13px;color:var(--muted);margin:12px 0 0;">Explicação simples de tudo que aparece no app. Toque no <b style="color:var(--violet);">?</b> em qualquer tela para abrir aqui.</p>
-
-      <div class="gloss-group">
-        <h3>Painel</h3>
-        <div class="gloss"><b>🔥 Mais quentes</b><span>Dezenas que <b>mais saíram</b> em todo o histórico (maior frequência). Atenção: "quente" não significa mais provável — o sorteio é aleatório.</span></div>
-        <div class="gloss"><b>❄️ Mais atrasadas</b><span>Dezenas que estão há <b>mais concursos sem sair</b>. "Atrasada" também não fica mais provável de sair.</span></div>
-        <div class="gloss"><b>Soma média</b><span>A soma dos números sorteados, na média dos concursos.</span></div>
-        <div class="gloss"><b>Pares por sorteio</b><span>Quantos números pares saem, em média, por concurso.</span></div>
-      </div>
-
-      <div class="gloss-group">
-        <h3>Dezenas (Score)</h3>
-        <div class="gloss"><b>Score (0–100)</b><span>Nota de cada dezena que combina frequência, atraso, repetição, afinidade e tendência. Quanto maior, melhor ela está pelos critérios. É um <b>ranking estatístico, não uma previsão</b>.</span></div>
-        <div class="gloss"><b>Frequência / %</b><span>Quantas vezes (e em que porcentagem) a dezena saiu na janela escolhida.</span></div>
-        <div class="gloss"><b>Atraso</b><span>Há quantos concursos a dezena não sai (0 = saiu no último).</span></div>
-        <div class="gloss"><b>Máx</b><span>O <b>maior atraso</b> que essa dezena já teve em toda a história — ajuda a ver até onde ela costuma "sumir".</span></div>
-        <div class="gloss"><b>Janela (20/50/100/500/tudo)</b><span>Sobre quantos concursos recentes calcular a frequência mostrada.</span></div>
-      </div>
-
-      <div class="gloss-group">
-        <h3>Padrões</h3>
-        <div class="gloss"><b>Pares / Ímpares</b><span>Quantos números pares e ímpares saem por sorteio, e qual combinação é mais comum.</span></div>
-        <div class="gloss"><b>Soma</b><span>Distribuição da soma dos números sorteados.</span></div>
-        <div class="gloss"><b>Faixas</b><span>Divide os números em grupos (ex.: 1–5, 6–10...) e mostra o quanto cada grupo aparece.</span></div>
-        <div class="gloss"><b>Repetição do anterior</b><span>Quantos números se repetem do concurso imediatamente anterior.</span></div>
-        <div class="gloss"><b>Afinidade / duplas</b><span>Pares de números que costumam <b>sair juntos</b> com mais frequência.</span></div>
-        <div class="gloss"><b>Selo "+ sai" (dourado)</b><span>Marca o valor <b>mais comum</b> daquele gráfico.</span></div>
-      </div>
-
-      <div class="gloss-group">
-        <h3>Gerar jogos</h3>
-        <div class="gloss"><b>Estratégia</b><span>Um jeito pronto de montar o jogo (equilibrada, quentes, atrasadas, afinidade...).</span></div>
-        <div class="gloss"><b>Filtros</b><span>Regras que o jogo deve respeitar: repetir do último, equilíbrio de pares/ímpares, soma típica, distribuir pelas faixas, peso por Score.</span></div>
-        <div class="gloss"><b>Fechamento / desdobramento</b><span>Jogar um <b>bolão</b> de várias dezenas usando um conjunto reduzido de jogos, em vez de todas as combinações.</span></div>
-        <div class="gloss"><b>Garantia</b><span>O prêmio mínimo que o fechamento <b>assegura</b> — desde que você acerte as dezenas dentro do seu bolão.</span></div>
-      </div>
-
-      <div class="gloss-group">
-        <h3>Lab (Laboratório)</h3>
-        <div class="gloss"><b>Pesos</b><span>Quanto cada critério influencia o Score. Você ajusta para criar sua própria estratégia.</span></div>
-        <div class="gloss"><b>Backtest</b><span>Testa a estratégia no passado, escolhendo as dezenas <b>só com os dados de cada época</b> (sem "espiar" o futuro), e vê como teria se saído.</span></div>
-        <div class="gloss"><b>Esperado pelo acaso</b><span>Quantos acertos qualquer jogo teria, na média, só por sorte. As estratégias ficam sempre pertinho desse número — é a prova de que nada prevê o sorteio.</span></div>
-        <div class="gloss"><b>Monte Carlo</b><span>Simula milhares de concursos para estimar sua <b>chance real de prêmio</b> jogando vários jogos.</span></div>
-      </div>
-
-      <div class="gloss-group">
-        <h3>Conferir e Meus jogos</h3>
-        <div class="gloss"><b>Acertos</b><span>Quantas das suas dezenas saíram no concurso.</span></div>
-        <div class="gloss"><b><span class="sw" style="background:radial-gradient(circle at 32% 28%,#f4c04d,#e0a01a);"></span>Bolinha dourada</b><span>Número seu que foi sorteado.</span></div>
-        <div class="gloss"><b>🏆 Troféu</b><span>Você teria ganho um prêmio (atingiu a faixa mínima de acertos daquela loteria).</span></div>
-      </div>
-
-      <div class="note" style="margin:20px 0 0;">
-        <b>Importante:</b> as loterias são sorteios <b>aleatórios</b>. Nenhuma estatística, score ou estratégia prevê o próximo resultado. Este app é uma ferramenta de <b>estudo e diversão</b> — não garante prêmio.
-      </div>
+    <div class="lots">
+      <div class="lot"><span class="b" style="background:#8b5cff">LF</span>Lotofácil</div>
+      <div class="lot"><span class="b" style="background:#1f9d57">MS</span>Mega-Sena</div>
+      <div class="lot"><span class="b" style="background:#2f6bd8">QN</span>Quina</div>
+      <div class="lot"><span class="b" style="background:#e0761a">LM</span>Lotomania</div>
+      <div class="lot"><span class="b" style="background:#c0392b">DS</span>Dupla Sena</div>
+      <div class="lot"><span class="b" style="background:#d4a017">DD</span>Dia de Sorte</div>
     </div>
   </div>
 </div>
 
-<div id="contaModal" class="modal" style="display:none;">
-  <div class="modal-card">
-    <div class="modal-head">
-      <h2 id="contaTitulo">Minha conta</h2>
-      <button class="hbtn" id="contaClose" title="Fechar">✕</button>
-    </div>
-    <div class="modal-body" id="contaBody"></div>
-  </div>
-</div>
-
-<div id="aboutModal" class="modal" style="display:none;">
-  <div class="modal-card">
-    <div class="modal-head">
-      <h2>Sobre o Loto+Facil</h2>
-      <button class="hbtn" id="aboutClose" title="Fechar">✕</button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:14px;color:var(--ink-soft);margin:14px 0 0;">O <b>Loto+Facil</b> é um app gratuito de <b>análise estatística e geração de jogos</b> das loterias da Caixa. Funciona offline e pode ser instalado no seu celular.</p>
-      <div class="gloss-group">
-        <h3>Loterias</h3>
-        <div class="gloss"><span style="font-size:13px;color:var(--ink-soft);">Lotofácil · Mega-Sena · Quina · Lotomania · Dupla Sena · Dia de Sorte</span></div>
-      </div>
-
-      <button class="btn" id="installBtn2" style="margin-top:18px;">📲 Instalar o app no celular</button>
-      <div id="iosHint" class="note" style="display:none;margin-top:12px;">No iPhone: toque em <b>Compartilhar</b> (o quadrado com a seta) e depois em <b>"Adicionar à Tela de Início"</b>.</div>
-
-      <p class="sub" style="margin:18px 0 8px;">Gostou? Compartilhe:</p>
-      <div class="chips">
-        <button class="chip" id="shareApp" type="button">📱 WhatsApp</button>
-        <button class="chip" id="copyLink" type="button">🔗 Copiar link</button>
-      </div>
-
-      <div class="note" style="margin-top:18px;">
-        <b>Importante:</b> as loterias são sorteios <b>aleatórios</b>. Nenhuma estatística prevê o resultado. Este app é uma ferramenta de <b>estudo e diversão</b> — não garante prêmio. Jogue com responsabilidade.
-      </div>
-      <p style="text-align:center;color:var(--muted);font-size:12px;margin:16px 0 0;">lotomaisfacil.pages.dev · feito com 🍀</p>
+<!-- FEATURES -->
+<section id="recursos">
+  <div class="wrap">
+    <div class="eyebrow">O que o app faz</div>
+    <h2>Tudo pra apostar melhor, num lugar só</h2>
+    <p class="sub">Ferramentas que analistas de loteria usam, simplificadas pra qualquer pessoa.</p>
+    <div class="grid">
+      <div class="card"><div class="ic">📊</div><h3>Análise estatística</h3><p>Frequência, dezenas atrasadas, repetições, pares que saem juntos, soma, pares/ímpares e mais — com um ranking (Score) de cada dezena.</p></div>
+      <div class="card"><div class="ic">🎲</div><h3>Gerador inteligente</h3><p>Gere jogos por estratégias prontas ou personalize: fixe dezenas, exclua números e escolha o equilíbrio do volante.</p></div>
+      <div class="card"><div class="ic">🎯</div><h3>Fechamentos com garantia</h3><p>Monte fechamentos que garantem prêmio se você acertar um mínimo de dezenas, com menos jogos.<span class="tag">PRO</span></p></div>
+      <div class="card"><div class="ic">✅</div><h3>Conferidor automático</h3><p>Confere seus jogos no último sorteio sozinho e mostra quanto você ganharia — em reais, por faixa de prêmio.</p></div>
+      <div class="card"><div class="ic">🗂️</div><h3>Meus jogos na nuvem</h3><p>Salve seus bilhetes em carrinhos, acompanhe o desempenho no histórico e sincronize entre celular e PC.<span class="tag">PRO</span></p></div>
+      <div class="card"><div class="ic">🧪</div><h3>Laboratório & backtest</h3><p>Teste qualquer estratégia contra todo o histórico de sorteios e veja como ela teria performado — sem achismo.</p></div>
+      <div class="card"><div class="ic">🔄</div><h3>Sempre atualizado</h3><p>Puxa o resultado mais recente automaticamente ao abrir. Você nunca fica com dados velhos.</p></div>
+      <div class="card"><div class="ic">📲</div><h3>App no celular, offline</h3><p>Instale na tela inicial e use como um aplicativo — abre rápido e funciona mesmo sem internet.</p></div>
     </div>
   </div>
-</div>
+</section>
 
-<nav class="tabbar" id="tabbar">
-  <button data-tab="painel" class="active"><span class="ic">🏠</span>Painel</button>
-  <button data-tab="dezenas"><span class="ic">🎯</span>Dezenas</button>
-  <button data-tab="padroes"><span class="ic">📊</span>Padrões</button>
-  <button data-tab="gerar"><span class="ic">🎲</span>Gerar</button>
-  <button data-tab="lab"><span class="ic">🧪</span>Lab</button>
-  <button data-tab="conferir"><span class="ic">✓</span>Conferir</button>
-  <button data-tab="meus"><span class="ic">⭐</span>Jogos</button>
-</nav>
+<!-- HOW -->
+<section style="background:var(--surface-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="eyebrow">Como funciona</div>
+    <h2>Do palpite ao jogo em 3 passos</h2>
+    <div class="steps" style="margin-top:36px;">
+      <div class="step"><h3>1. Escolha a loteria</h3><p>Lotofácil, Mega-Sena, Quina, Lotomania, Dupla Sena ou Dia de Sorte.</p></div>
+      <div class="step"><h3>2. Analise e gere</h3><p>Veja os padrões e deixe o gerador montar jogos com a sua estratégia.</p></div>
+      <div class="step"><h3>3. Salve e confira</h3><p>Guarde seus jogos e o app confere e calcula os prêmios sozinho.</p></div>
+    </div>
+  </div>
+</section>
 
-<script src="dados/lotofacil.js"></script>
-<script src="dados/megasena.js"></script>
-<script src="dados/quina.js"></script>
-<script src="dados/lotomania.js"></script>
-<script src="dados/duplasena.js"></script>
-<script src="dados/diadesorte.js"></script>
-<script src="lib/supabase.js"></script>
-<script src="config.js"></script>
-<script src="app.js"></script>
+<!-- PLANS -->
+<section id="planos">
+  <div class="wrap">
+    <div class="eyebrow">Planos</div>
+    <h2>Comece grátis. Evolua quando quiser.</h2>
+    <p class="sub">Todas as análises são gratuitas. O Pro libera fechamentos, geração em massa e nuvem.</p>
+    <div class="plans">
+      <div class="plan">
+        <div class="name">Grátis</div>
+        <div class="price">R$ 0</div>
+        <ul>
+          <li><span class="ck">✓</span> Todas as análises estatísticas</li>
+          <li><span class="ck">✓</span> Gerador de jogos por estratégia</li>
+          <li><span class="ck">✓</span> Conferidor automático + prêmios</li>
+          <li><span class="ck">✓</span> Laboratório e backtest</li>
+          <li><span class="ck">✓</span> Instalar no celular (offline)</li>
+        </ul>
+        <a class="btn ghost" href="app.html" style="width:100%;margin-top:20px;">Começar grátis</a>
+      </div>
+      <div class="plan pro">
+        <span class="flag">MAIS POPULAR</span>
+        <div class="name">⭐ Pro</div>
+        <div class="price">R$ 9,90 <small>/ 30 dias</small></div>
+        <ul>
+          <li><span class="ck">✓</span> <b>Tudo do grátis</b>, mais:</li>
+          <li><span class="ck">✓</span> Fechamentos com garantia de prêmio</li>
+          <li><span class="ck">✓</span> Gerar muitos jogos de uma vez</li>
+          <li><span class="ck">✓</span> Sincronizar jogos na nuvem</li>
+          <li><span class="ck">✓</span> Pagamento via Pix (Mercado Pago)</li>
+        </ul>
+        <a class="btn primary" href="app.html" style="width:100%;margin-top:20px;">Assinar no app</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section id="instalar">
+  <div class="wrap">
+    <div class="install">
+      <img src="icons/icon-192.png" alt="Ícone do Loto+Facil" class="appicon">
+      <h2 style="margin-bottom:8px;">Leve o Loto+Facil no bolso</h2>
+      <p class="sub" style="margin-bottom:24px;">Instale como aplicativo no seu celular: abre rápido, sem loja, e funciona offline.</p>
+      <div class="cta">
+        <button class="btn primary big" id="installMain">📲 Instalar o app</button>
+        <a class="btn ghost big" href="app.html">Abrir no navegador</a>
+      </div>
+      <div class="iosHint" id="iosHint">📱 <b>No iPhone:</b> toque em <b>Compartilhar</b> (o quadrado com a seta pra cima) e depois em <b>“Adicionar à Tela de Início”</b>.</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p class="disc">
+      <span class="plus18">🔞 +18</span> — Jogue com responsabilidade. As loterias são jogos de azar e nenhum método garante prêmios; o Loto+Facil é uma ferramenta de <b>análise estatística e organização de jogos</b>, sem qualquer influência sobre os sorteios. App independente, <b>não é afiliado nem endossado pela Caixa Econômica Federal</b>.
+    </p>
+    <div style="margin-top:8px;">© <span id="yr"></span> Loto+Facil · <a href="app.html" style="color:var(--violet);font-weight:700;">Abrir o app</a></div>
+  </div>
+</footer>
+
+<script>
+  // Instalados abrem direto no app (pulam a landing)
+  (function(){
+    var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (standalone) location.replace('app.html');
+  })();
+
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  // PWA install
+  var deferredPrompt = null;
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferredPrompt = e; });
+
+  async function instalar(){
+    if (deferredPrompt){ deferredPrompt.prompt(); try{ await deferredPrompt.userChoice; }catch(e){} deferredPrompt = null; return; }
+    if (isIOS){ document.getElementById('iosHint').style.display = 'block'; document.getElementById('instalar').scrollIntoView({behavior:'smooth'}); return; }
+    // Sem prompt disponível (já instalado ou navegador não suporta): leva pro app.
+    location.href = 'app.html';
+  }
+  ['installTop','installMain'].forEach(function(id){ var b=document.getElementById(id); if(b) b.addEventListener('click', instalar); });
+  window.addEventListener('appinstalled', function(){ deferredPrompt = null; });
+
+  // Registrar o service worker (mesmo do app) para permitir instalação a partir da landing
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+  }
+</script>
 </body>
 </html>

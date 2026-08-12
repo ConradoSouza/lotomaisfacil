@@ -1,7 +1,8 @@
 /* Loto+Facil — service worker (cache offline) */
-const CACHE = 'lotomais-v28';
+const CACHE = 'lotomais-v29';
 const ASSETS = [
   './',
+  './app.html',
   './app.js',
   './config.js',
   './lib/supabase.js',
@@ -33,7 +34,9 @@ self.addEventListener('fetch', e => {
   // Navegação (abrir o app): rede primeiro, cai para o índice em cache (offline).
   // Evita servir respostas redirecionadas do cache, que quebram o app instalado.
   if (e.request.mode === 'navigate') {
-    e.respondWith(fetch(e.request).catch(() => caches.match('./')));
+    e.respondWith(fetch(e.request).catch(() =>
+      caches.match(e.request).then(r => r || caches.match('./app.html')).then(r => r || caches.match('./'))
+    ));
     return;
   }
 

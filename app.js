@@ -1015,10 +1015,15 @@ function renderContaBody() {
       <label class="field">Senha<input type="password" id="acSenha" autocomplete="${modoCadastro ? 'new-password' : 'current-password'}"></label>
       <div id="acErro" class="note" style="border-color:var(--red);color:var(--red);display:none;margin-bottom:10px;"></div>
       <button class="btn" id="acSubmit">${modoCadastro ? 'Cadastrar' : 'Entrar'}</button>
-      <p class="sub" style="text-align:center;margin-top:14px;">${modoCadastro ? 'Já tem conta?' : 'Não tem conta?'} <button id="acToggle" type="button" style="background:none;border:none;color:var(--violet);font-weight:700;cursor:pointer;font-family:inherit;">${modoCadastro ? 'Entrar' : 'Criar conta'}</button></p>`;
+      <p class="sub" style="text-align:center;margin-top:14px;">${modoCadastro ? 'Já tem conta?' : 'Não tem conta?'} <button id="acToggle" type="button" style="background:none;border:none;color:var(--violet);font-weight:700;cursor:pointer;font-family:inherit;">${modoCadastro ? 'Entrar' : 'Criar conta'}</button></p>
+      <div style="border-top:1px solid var(--line);margin:16px 0 0;padding-top:16px;text-align:center;">
+        <button class="btn sec" id="acInstalar" style="width:100%;">📲 Instalar o app no celular</button>
+        <div id="acIosHint" class="note" style="display:none;margin-top:10px;text-align:left;">No iPhone: toque em <b>Compartilhar</b> (o quadrado com a seta) e depois em <b>"Adicionar à Tela de Início"</b>.</div>
+      </div>`;
     $('acToggle').addEventListener('click', () => { modoCadastro = !modoCadastro; renderContaBody(); });
     $('acSubmit').addEventListener('click', submitAuth);
     $('acSenha').addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth(); });
+    $('acInstalar').addEventListener('click', () => { if (deferredPrompt) doInstall(); else $('acIosHint').style.display = ''; });
   }
 }
 async function submitAuth() {

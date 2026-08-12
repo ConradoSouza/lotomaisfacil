@@ -2,7 +2,7 @@
   "name": "Loto+Facil",
   "short_name": "Loto+Facil",
   "description": "Análise estatística e gerador de jogos de loterias (Lotofácil, Mega-Sena, Quina, Lotomania, Dupla Sena, Dia de Sorte) por estratégias",
-  "start_url": "./",
+  "start_url": "./app.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#100c1c",
