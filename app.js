@@ -407,7 +407,20 @@ function shareWhatsApp(title, games) {
 function exportBar(title, games, baseName, fechavel) {
   const bar = document.createElement('div'); bar.className = 'chips'; bar.style.marginTop = '12px';
   const mk = (txt, fn) => { const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = txt; b.addEventListener('click', () => fn(b)); return b; };
-  if (fechavel && L.fechamento !== false) bar.append(mk('🎯 Montar fechamento', () => copyToFechamento(games)));
+  if (fechavel && L.fechamento !== false) bar.append(mk('🎯 Montar fechamento', () => {
+    const picks = $('genResults').querySelectorAll('.fechpick');
+    let escolhidos = games;
+    if (picks.length) { // vários jogos gerados: usa só os marcados
+      escolhidos = [];
+      picks.forEach(cb => { if (cb.checked) { const i = +cb.dataset.i; if (games[i]) escolhidos.push(games[i]); } });
+      if (!escolhidos.length) {
+        const h = $('fechPickHint');
+        if (h) { h.innerHTML = '⚠️ Marque pelo menos <b>um jogo</b> para enviar ao fechamento.'; h.style.color = 'var(--red)'; h.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        return;
+      }
+    }
+    copyToFechamento(escolhidos);
+  }));
   const salvar = mk('⭐ Salvar em Meus jogos', () => {
     if (bar.querySelector('.saveform') || salvar.disabled) return;
     const form = document.createElement('div'); form.className = 'saveform';
@@ -751,13 +764,16 @@ $('genBtn').addEventListener('click', () => {
   if (L.total - excluidas.size < cfg.qtd) { $('genResults').innerHTML = `<div class="note">Você excluiu dezenas demais — sobram ${L.total - excluidas.size}, mas o jogo precisa de ${cfg.qtd}.</div>`; return; }
   if (fixadas.size > cfg.qtd) { $('genResults').innerHTML = `<div class="note">Você fixou ${fixadas.size} dezenas, mas o jogo tem ${cfg.qtd}. Reduza as fixas ou aumente as dezenas por jogo.</div>`; return; }
   const count = Math.max(1, Math.min(isPro() ? 20 : 3, parseInt($('genCount').value) || 1));
+  const multi = count > 1;
   let html = ''; const out = [];
   for (let i = 0; i < count; i++) {
     const g = generateOne(cfg); out.push(g); const m = gameMeta(g);
-    html += `<div class="game"><div class="ghead"><span class="gtitle">Jogo ${i + 1}</span><span class="tagm">Score médio <b>${m.avgScore.toFixed(0)}</b></span></div>
+    const chk = multi ? `<label class="fechlab" title="Marque para enviar este jogo ao fechamento"><input type="checkbox" class="fechpick" data-i="${i}"><span class="gtitle">Jogo ${i + 1}</span></label>` : `<span class="gtitle">Jogo ${i + 1}</span>`;
+    html += `<div class="game"><div class="ghead">${chk}<span class="tagm">Score médio <b>${m.avgScore.toFixed(0)}</b></span></div>
       <div class="balls">${g.map(n => ball(n, 'sm')).join('')}</div>
       <div class="gmeta"><span class="tagm">Soma <b>${m.soma}</b></span><span class="tagm">${m.pares}P / ${m.impares}I</span><span class="tagm">Repetiu <b>${m.rep}</b> do último</span><span class="tagm">Faixas ${m.fc.join('-')}</span></div></div>`;
   }
+  if (multi) html += `<div class="note" id="fechPickHint">🎯 Para o fechamento: <b>marque os jogos</b> que você quer enviar (pode ser só 1). Depois toque em <b>"Montar fechamento"</b>.</div>`;
   $('genResults').innerHTML = html;
   $('genResults').appendChild(exportBar('Jogos gerados — ' + L.nome, out, KEY + '-jogos', true));
 });
