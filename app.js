@@ -747,6 +747,7 @@ function buildLottery(key) {
 
   meusJogos = loadMeus();
   renderPainel(); renderDezenas(); renderPadroes(); renderMeus();
+  if (typeof renderProximo === 'function') renderProximo(key);
   if (typeof aplicarGating === 'function') aplicarGating();
   window.scrollTo(0, 0);
 }
@@ -1175,7 +1176,10 @@ async function catchUp(key) {
     const r = await fetch('/api/resultados?loteria=' + key + '&desde=' + maxLocal, { cache: 'no-store' });
     if (!r.ok) return;
     const j = await r.json();
-    if (!j || !j.ok || !Array.isArray(j.entries) || !j.entries.length) return;
+    if (!j || !j.ok) return;
+    // próximo concurso + prêmio estimado (guarda mesmo quando não há resultado novo)
+    if (j.proximo) { window.LOTO_PROX = window.LOTO_PROX || {}; window.LOTO_PROX[key] = j.proximo; if (KEY === key) renderProximo(key); }
+    if (!Array.isArray(j.entries) || !j.entries.length) return;
 
     window.LOTO_DB = window.LOTO_DB || {};
     const arr = (window.LOTO_DB[key] || []).slice();
@@ -1194,11 +1198,66 @@ async function catchUp(key) {
   } catch (e) { /* silencioso: mantém os dados que vieram no pacote */ }
 }
 
+/* ===== Próximo concurso + prêmio estimado + "sorteios de hoje" ===== */
+const DIAS_SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+function parseBR(d) { if (!d) return null; const m = d.slice(0, 10).split('/'); if (m.length < 3) return null; return new Date(+m[2], +m[1] - 1, +m[0]); }
+function hojeBR() { return new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }); } // dd/mm/aaaa
+function ehHoje(d) { return !!d && d.slice(0, 10) === hojeBR(); }
+function diaSemana(d) { const dt = parseBR(d); return dt ? DIAS_SEMANA[dt.getDay()] : ''; }
+function estimDe(p) { return p ? (p.acumulado && p.acumuladoValor ? p.acumuladoValor : p.estimativa) : 0; }
+
+function renderProximo(key) {
+  const el = $('proxConc'); if (!el) return;
+  const p = (window.LOTO_PROX || {})[key];
+  if (!p || (!p.numero && !p.data)) { el.innerHTML = ''; return; }
+  const cor = L.cor;
+  const dataTxt = p.data ? diaSemana(p.data) + ', ' + p.data.slice(0, 5) : '';
+  const estim = estimDe(p);
+  const rotulo = p.acumulado ? '💥 Acumulado! Estimativa' : '🎁 Prêmio estimado';
+  el.innerHTML = `<div class="card" style="border-left:4px solid ${cor};display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;">
+    <div style="flex:1;min-width:170px;">
+      <div style="font-weight:800;font-size:15px;">🎟️ Próximo: ${L.nome}${p.numero ? ' #' + p.numero : ''}</div>
+      <div class="sub" style="margin:2px 0 0;">${dataTxt}${ehHoje(p.data) ? ' · <b style="color:var(--green);">é hoje!</b>' : ''}</div>
+    </div>
+    ${estim ? `<div style="text-align:right;"><div style="font-size:11px;color:var(--muted);font-weight:700;">${rotulo}</div><div style="font-weight:800;font-size:17px;color:${cor};">${money(estim)}</div></div>` : ''}
+  </div>`;
+}
+
+async function carregarQuaisHoje() {
+  const el = $('quaisHoje'); if (!el) return;
+  try {
+    const r = await fetch('/api/proximos', { cache: 'no-store' });
+    if (!r.ok) return;
+    const j = await r.json();
+    if (!j || !j.ok || !j.loterias) return;
+    const hoje = hojeBR();
+    const doDia = Object.keys(j.loterias).map(k => ({ k, ...j.loterias[k] }))
+      .filter(x => x.proximo && x.proximo.data && x.proximo.data.slice(0, 10) === hoje)
+      .sort((a, b) => estimDe(b.proximo) - estimDe(a.proximo));
+    if (!doDia.length) { el.innerHTML = ''; return; }
+    const chips = doDia.map(x => {
+      const cor = (LOTERIAS[x.k] || {}).cor || 'var(--violet)';
+      const e = estimDe(x.proximo);
+      return `<button class="chip qh" data-lot="${x.k}" type="button" style="display:flex;flex-direction:column;align-items:flex-start;gap:1px;border-left:3px solid ${cor};padding:8px 12px;text-align:left;">
+        <span style="font-weight:800;">${x.nome}${x.proximo.numero ? ' #' + x.proximo.numero : ''}</span>
+        <span style="font-size:11px;color:var(--muted);">${x.proximo.acumulado ? '💥 acumulado · ' : ''}${e ? '~' + moneyShort(e) : 'sorteio hoje'}</span>
+      </button>`;
+    }).join('');
+    el.innerHTML = `<div class="card"><div style="font-weight:800;margin-bottom:8px;">🗓️ Sorteios de hoje <span class="hint">toque para abrir</span></div><div class="chips">${chips}</div></div>`;
+    el.querySelectorAll('.qh').forEach(b => b.addEventListener('click', () => {
+      const k = b.dataset.lot; $('lotSel').value = k; buildLottery(k); catchUp(k);
+      try { localStorage.setItem('lotomais-loteria', k); } catch (e) {}
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }));
+  } catch (e) { /* silencioso */ }
+}
+
 (function init() {
   let key = 'lotofacil'; try { const k = localStorage.getItem('lotomais-loteria'); if (k && LOTERIAS[k]) key = k; } catch (e) {}
   $('lotSel').value = key;
   buildLottery(key);
   catchUp(key);
+  carregarQuaisHoje();
   initAuth();
 })();
 

@@ -52,10 +52,20 @@ function premiosFrom(j) {
   return { concurso: j.concurso || j.numero, data: j.data || j.dataApuracao, premios };
 }
 
-async function latestNumber(key) {
-  try { const j = await getJSON(GUIDI(key) + '/ultimo'); if (j && (j.numero || j.concurso)) return j.numero || j.concurso; } catch (e) {}
-  try { const j = await getJSON(COMUNIT(key) + '/latest'); if (j && j.concurso) return j.concurso; } catch (e) {}
-  const j = await getJSON(CAIXA(key)); return j.numero || j.concurso;
+async function ultimoJSON(key) {
+  try { const j = await getJSON(GUIDI(key) + '/ultimo'); if (j && (j.numero || j.concurso)) return j; } catch (e) {}
+  try { const j = await getJSON(COMUNIT(key) + '/latest'); if (j && j.concurso) return j; } catch (e) {}
+  return await getJSON(CAIXA(key));
+}
+function proximoFrom(j) {
+  if (!j) return null;
+  const numero = j.numeroConcursoProximo || j.proximoConcurso || null;
+  const data = j.dataProximoConcurso || null;
+  const estimativa = j.valorEstimadoProximoConcurso || 0;
+  const acumulado = !!j.acumulado;
+  const acumuladoValor = j.valorAcumuladoProximoConcurso || 0;
+  if (!numero && !data && !estimativa) return null;
+  return { numero, data, estimativa, acumulado, acumuladoValor };
 }
 async function fetchRaw(key, n) {
   try { const j = await getJSON(GUIDI(key) + '/' + n); if (j && (j.numero || j.concurso)) return j; } catch (e) {}
@@ -76,11 +86,13 @@ export async function onRequestGet({ request }) {
     const desde = parseInt(url.searchParams.get('desde') || '0', 10) || 0;
     if (!LOTERIAS.includes(key)) return json({ ok: false, erro: 'loteria inválida' }, 400);
 
-    let latest;
-    try { latest = await latestNumber(key); }
+    let ult;
+    try { ult = await ultimoJSON(key); }
     catch (e) { return json({ ok: false, erro: 'fontes indisponíveis' }, 502); }
+    const latest = ult.numero || ult.concurso;
+    const proximo = proximoFrom(ult);
 
-    if (!latest || latest <= desde) return json({ ok: true, latest: latest || desde, entries: [], premios: null });
+    if (!latest || latest <= desde) return json({ ok: true, latest: latest || desde, entries: [], premios: null, proximo });
 
     const entries = [];
     let lastJson = null;
@@ -94,7 +106,7 @@ export async function onRequestGet({ request }) {
       es.forEach(e => entries.push(e));
       lastJson = j;
     }
-    return json({ ok: true, latest, entries, premios: lastJson ? premiosFrom(lastJson) : null });
+    return json({ ok: true, latest, entries, premios: lastJson ? premiosFrom(lastJson) : null, proximo });
   } catch (e) {
     return json({ ok: false, erro: 'erro interno' }, 500);
   }
