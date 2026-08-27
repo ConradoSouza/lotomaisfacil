@@ -107,5 +107,6 @@ async function atualizar(key) {
 (async () => {
   for (const key of alvos) await atualizar(key);
   try { fs.writeFileSync(path.join(__dirname, '_novos.json'), JSON.stringify(NOVOS), 'utf8'); } catch (e) {}
+  try { fs.writeFileSync(path.join(__dirname, '_status.json'), JSON.stringify({ falha: houveFalha, quando: new Date().toISOString() }), 'utf8'); } catch (e) {}
   if (houveFalha) { console.error('ATENÇÃO: havia concurso novo que não pôde ser buscado — verifique as fontes.'); process.exitCode = 1; }
 })();

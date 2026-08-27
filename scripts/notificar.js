@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-/* Envia avisos de push quando saem resultados novos.
-   Lê o resumo escrito pelo atualizar.js (scripts/_novos.json) e dispara para os inscritos.
-   Requer (variáveis de ambiente / secrets do GitHub):
-     SUPABASE_URL, SUPABASE_SERVICE_ROLE, VAPID_PUBLIC, VAPID_PRIVATE, VAPID_SUBJECT (ex.: mailto:voce@email.com)
-   Sem dependência além de "web-push". */
+/* Avisos de push:
+   - Resultado novo -> notifica TODOS os inscritos (lê scripts/_novos.json do atualizar.js).
+   - Falha na atualização -> alerta os ADMINS (lê scripts/_status.json + tabela admins).
+   Secrets (env): SUPABASE_URL, SUPABASE_SERVICE_ROLE, VAPID_PUBLIC, VAPID_PRIVATE, VAPID_SUBJECT. */
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -13,47 +12,52 @@ try { webpush = require('web-push'); } catch (e) { console.log('web-push não in
 const { SUPABASE_URL, SUPABASE_SERVICE_ROLE, VAPID_PUBLIC, VAPID_PRIVATE, VAPID_SUBJECT } = process.env;
 const APP_URL = 'https://lotomaisfacil.pages.dev/app.html';
 
+function ler(nome, fb) { try { return JSON.parse(fs.readFileSync(path.join(__dirname, nome), 'utf8')); } catch (e) { return fb; } }
+
 (async () => {
-  const arq = path.join(__dirname, '_novos.json');
-  let novos = [];
-  try { novos = JSON.parse(fs.readFileSync(arq, 'utf8')); } catch (e) { /* sem arquivo = nada novo */ }
-  if (!Array.isArray(novos) || !novos.length) { console.log('Sem resultados novos; nada a notificar.'); return; }
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE || !VAPID_PUBLIC || !VAPID_PRIVATE) {
     console.log('Segredos de push ausentes (VAPID/Supabase). Pulei o envio.'); return;
   }
   webpush.setVapidDetails(VAPID_SUBJECT || 'mailto:contato@lotomaisfacil.app', VAPID_PUBLIC, VAPID_PRIVATE);
-
-  // monta a mensagem
-  const lista = novos.map(n => `${n.nome} #${n.concurso}`).join(', ');
-  const payload = JSON.stringify({
-    title: '🍀 Saiu o resultado!',
-    body: lista + '. Veja se você ganhou!',
-    url: APP_URL,
-    tag: 'resultado'
-  });
-
-  // lê as inscrições (service_role bypassa o RLS)
   const base = SUPABASE_URL.replace(/\/$/, '');
   const headers = { apikey: SUPABASE_SERVICE_ROLE, Authorization: 'Bearer ' + SUPABASE_SERVICE_ROLE };
-  let subs = [];
-  try {
-    const r = await fetch(base + '/rest/v1/push_subs?select=endpoint,p256dh,auth', { headers });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    subs = await r.json();
-  } catch (e) { console.log('Falha ao ler inscrições: ' + e.message); return; }
-  if (!subs.length) { console.log('Nenhum inscrito ainda.'); return; }
 
-  let ok = 0, mortas = 0, falhas = 0;
-  await Promise.all(subs.map(async s => {
-    const sub = { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } };
-    try { await webpush.sendNotification(sub, payload); ok++; }
-    catch (err) {
-      const code = err && err.statusCode;
-      if (code === 404 || code === 410) { // inscrição expirada/removida: apaga
-        mortas++;
-        try { await fetch(base + '/rest/v1/push_subs?endpoint=eq.' + encodeURIComponent(s.endpoint), { method: 'DELETE', headers }); } catch (e) {}
-      } else { falhas++; }
+  async function rest(pathq) { const r = await fetch(base + '/rest/v1/' + pathq, { headers }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }
+  async function apagarEndpoint(ep) { try { await fetch(base + '/rest/v1/push_subs?endpoint=eq.' + encodeURIComponent(ep), { method: 'DELETE', headers }); } catch (e) {} }
+  async function enviar(subs, payload, rotulo) {
+    if (!subs.length) { console.log(rotulo + ': nenhum destinatário.'); return; }
+    let ok = 0, mortas = 0, falhas = 0;
+    await Promise.all(subs.map(async s => {
+      try { await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload); ok++; }
+      catch (err) { const c = err && err.statusCode; if (c === 404 || c === 410) { mortas++; await apagarEndpoint(s.endpoint); } else falhas++; }
+    }));
+    console.log(`${rotulo}: ${ok} enviado(s), ${mortas} morta(s), ${falhas} falha(s).`);
+  }
+
+  // 1) Resultado novo -> todos os inscritos
+  const novos = ler('_novos.json', []);
+  if (Array.isArray(novos) && novos.length) {
+    const lista = novos.map(n => `${n.nome} #${n.concurso}`).join(', ');
+    const payload = JSON.stringify({ title: '🍀 Saiu o resultado!', body: lista + '. Veja se você ganhou!', url: APP_URL, tag: 'resultado' });
+    let subs = [];
+    try { subs = await rest('push_subs?select=endpoint,p256dh,auth'); } catch (e) { console.log('Falha ao ler inscrições: ' + e.message); }
+    await enviar(subs, payload, 'Resultado (' + lista + ')');
+  } else {
+    console.log('Sem resultados novos para notificar.');
+  }
+
+  // 2) Falha na atualização -> alerta os admins
+  const status = ler('_status.json', { falha: false });
+  if (status && status.falha) {
+    let adminIds = [];
+    try { adminIds = (await rest('admins?select=user_id')).map(a => a.user_id).filter(Boolean); } catch (e) {}
+    if (adminIds.length) {
+      let subs = [];
+      try { subs = await rest('push_subs?select=endpoint,p256dh,auth,user_id&user_id=in.(' + adminIds.join(',') + ')'); } catch (e) {}
+      const payload = JSON.stringify({ title: '⚠️ Loto+Facil: atualização falhou', body: 'Uma fonte de resultados ficou indisponível. Confira as APIs/robô.', url: APP_URL, tag: 'admin-alerta' });
+      await enviar(subs, payload, 'Alerta admin');
+    } else {
+      console.log('Falha detectada, mas nenhum admin cadastrado para alertar.');
     }
-  }));
-  console.log(`Push: ${ok} enviado(s), ${mortas} inscrição(ões) morta(s) removida(s), ${falhas} falha(s). Resultados: ${lista}`);
+  }
 })();

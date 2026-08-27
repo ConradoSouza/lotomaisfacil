@@ -1032,7 +1032,7 @@ function nomeUsuario() { return (perfil && perfil.nome) || (usuario && usuario.e
 
 async function carregarPerfil() {
   if (!SB || !usuario) { perfil = null; return; }
-  try { const { data } = await SB.from('perfis').select('nome,plano,pro_ate,trial_ate').eq('id', usuario.id).single(); perfil = data || { nome: '', plano: 'free' }; }
+  try { const { data } = await SB.from('perfis').select('nome,plano,pro_ate,trial_ate,ref_by').eq('id', usuario.id).single(); perfil = data || { nome: '', plano: 'free' }; }
   catch (e) { perfil = { nome: '', plano: 'free' }; }
 }
 function atualizarContaBtn() {
@@ -1069,10 +1069,13 @@ function renderContaBody() {
         <div style="margin-top:12px;"><span class="tagm" style="border-color:transparent;font-size:13px;padding:5px 14px;${pro ? 'background:color-mix(in srgb,var(--gold) 22%,transparent);color:var(--amber);' : ''}">${pro ? (emTrial ? '⭐ Pro (teste)' : '⭐ Plano Pro') : 'Plano Grátis'}</span></div>
       </div>
       ${meio}
-      <button class="btn sec" id="btnSair" style="margin-top:10px;">Sair</button>`;
+      ${refSectionHTML()}
+      <button class="btn sec" id="btnSair" style="margin-top:14px;">Sair</button>`;
     $('btnSair').addEventListener('click', sair);
     if ($('btnUpgrade')) $('btnUpgrade').addEventListener('click', assinarPro);
     if ($('btnTrial')) $('btnTrial').addEventListener('click', ativarTrial);
+    if ($('refCopy')) $('refCopy').addEventListener('click', () => { const i = $('refLink'); i.select(); if (navigator.clipboard) navigator.clipboard.writeText(i.value).then(() => { $('refCopy').textContent = '✓'; setTimeout(() => $('refCopy').textContent = 'Copiar', 1500); }).catch(() => {}); });
+    if ($('refShare')) $('refShare').addEventListener('click', () => { window.open('https://wa.me/?text=' + encodeURIComponent('🍀 Uso o Loto+Facil pra analisar e gerar jogos das loterias. Testa aí:\n' + $('refLink').value), '_blank'); });
   } else {
     body.innerHTML = `<p class="sub" style="margin:10px 0 14px;">${modoCadastro ? 'Crie sua conta para salvar e sincronizar seus jogos entre aparelhos.' : 'Entre para acessar seus jogos em qualquer aparelho.'}</p>
       ${modoCadastro ? `<label class="field">Nome<input type="text" id="acNome" autocomplete="name"></label>` : ''}
@@ -1248,19 +1251,40 @@ async function removerJogosNuvem(ids) { if (!SB || !usuario || !isPro() || !ids.
 async function enviarTudoNuvem() { if (!isPro()) return; for (const k of Object.keys(LOTERIAS)) { const arr = loadMeusFor(k); if (arr.length) await enviarJogosNuvem(k, arr); } }
 async function renomearNuvem(ids, nome) { if (!SB || !usuario || !isPro() || !ids.length) return; try { await SB.from('jogos').update({ nome }).in('id', ids); } catch (e) {} }
 
+// Indique e ganhe: guarda o ?ref= da URL e registra o indicador quando o usuário loga.
+try { const ref = new URLSearchParams(location.search).get('ref'); if (ref) localStorage.setItem('lotomais-ref', ref); } catch (e) {}
+async function aplicarReferral() {
+  if (!SB || !usuario || !perfil || perfil.ref_by) { try { if (perfil && perfil.ref_by) localStorage.removeItem('lotomais-ref'); } catch (e) {} return; }
+  let ref; try { ref = localStorage.getItem('lotomais-ref'); } catch (e) {}
+  if (!ref || ref === usuario.id) return;
+  try { await SB.rpc('set_referral', { ref }); perfil.ref_by = ref; localStorage.removeItem('lotomais-ref'); } catch (e) {}
+}
+function refSectionHTML() {
+  if (!usuario) return '';
+  const link = 'https://lotomaisfacil.pages.dev/app.html?ref=' + usuario.id;
+  return `<div style="border-top:1px solid var(--line);margin-top:16px;padding-top:14px;">
+    <b>🎁 Indique e ganhe</b>
+    <div class="sub" style="margin:2px 0 10px;">Quando alguém <b>assinar o Pro</b> pelo seu link, você ganha <b>15 dias de Pro</b>.</div>
+    <div style="display:flex;gap:6px;">
+      <input type="text" id="refLink" readonly value="${link}" style="flex:1;margin-top:0;font-size:12px;" onclick="this.select()">
+      <button class="chip" id="refCopy" type="button" style="flex:none;padding:8px 12px;">Copiar</button>
+    </div>
+    <button class="btn sec" id="refShare" style="margin-top:10px;">📱 Compartilhar no WhatsApp</button>
+  </div>`;
+}
 async function initAuth() {
   if (!SB) { atualizarContaBtn(); return; }
   const { data } = await SB.auth.getSession();
   usuario = data.session ? data.session.user : null;
-  if (usuario) await carregarPerfil();
+  if (usuario) { await carregarPerfil(); await aplicarReferral(); }
   atualizarContaBtn(); aplicarGating();
   if (usuario && isPro()) await puxarJogosNuvem();
   renderMeus();
   if (usuario) checarRetornoPagamento();
   SB.auth.onAuthStateChange(async (_ev, session) => {
-    const antes = usuario && usuario.id;
     usuario = session ? session.user : null;
     await carregarPerfil();
+    if (usuario) await aplicarReferral();
     atualizarContaBtn(); aplicarGating();
     if (usuario && isPro()) await puxarJogosNuvem();
     renderMeus();

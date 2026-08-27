@@ -1,5 +1,5 @@
 /* Loto+Facil — service worker (cache offline) */
-const CACHE = 'lotomais-v34';
+const CACHE = 'lotomais-v35';
 const ASSETS = [
   './',
   './app.html',
