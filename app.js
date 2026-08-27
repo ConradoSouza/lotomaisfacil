@@ -633,25 +633,44 @@ function renderMeus() {
     const alvoTxt = g.jogos[0].alvo ? ` · 🎯 #${g.jogos[0].alvo}` : '';
     const lotLabel = showLot ? `<span class="tagm" style="background:color-mix(in srgb,var(--violet) 14%,transparent);color:var(--violet);border-color:transparent;margin-bottom:8px;display:inline-block;">${g.ctx.cfg.nome}</span>` : '';
     const multi = g.jogos.length > 1;
+    const fechCapable = g.ctx.cfg.fechamento !== false;
     const jogosHtml = g.jogos.map((j, idx) => {
       const win = g.ctx.cfg.premios.includes(j._hits);
       const sep = multi && idx < g.jogos.length - 1 ? 'border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:7px;' : 'margin-bottom:5px;';
+      const fchk = (multi && fechCapable) ? `<input type="checkbox" class="fpick" data-gid="${g.gid}" data-id="${j.id}" title="Marcar para o fechamento" style="width:17px;height:17px;flex:none;margin:0;accent-color:var(--violet);cursor:pointer;">` : '';
       const num = multi ? `<span style="color:var(--muted);font-size:11px;font-weight:700;flex:none;min-width:14px;">${idx + 1}</span>` : '';
       const delG = multi ? `<button class="chip" data-delg="${g.k}|${j.id}" type="button" style="padding:2px 8px;font-size:11px;flex:none;" title="Excluir este jogo">✕</button>` : '';
       const mesOk = j.mes && g.ctx.last && g.ctx.last[3] === j.mes;
       const mesTag = j.mes ? `<span class="tagm" style="flex:none;${mesOk ? 'color:var(--green);border-color:transparent;background:color-mix(in srgb,var(--green) 16%,transparent);' : ''}" title="Mês da Sorte">🗓️ ${j.mes}${mesOk ? ' ✓' : ''}</span>` : '';
-      return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;${sep}">${num}<div class="balls" style="flex:1;min-width:60%;">${j.nums.map(n => ball(n, g.ctx.lastSet.has(n) ? 'sm gold' : 'sm')).join('')}</div><span class="tagm" style="${win ? 'color:var(--green);border-color:transparent;background:color-mix(in srgb,var(--green) 16%,transparent);' : ''}">${j._hits}${win ? ' 🏆' : ''}</span>${mesTag}${delG}</div>`;
+      return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;${sep}">${fchk}${num}<div class="balls" style="flex:1;min-width:60%;">${j.nums.map(n => ball(n, g.ctx.lastSet.has(n) ? 'sm gold' : 'sm')).join('')}</div><span class="tagm" style="${win ? 'color:var(--green);border-color:transparent;background:color-mix(in srgb,var(--green) 16%,transparent);' : ''}">${j._hits}${win ? ' 🏆' : ''}</span>${mesTag}${delG}</div>`;
     }).join('');
     return `<div class="game">
       <div class="ghead"><span class="gtitle">${titulo} · ${g.jogos.length} jogo(s) · ${dt}${alvoTxt}</span><span style="display:flex;gap:6px;"><button class="chip" data-rename="${g.gid}" type="button" style="padding:4px 10px;" title="Renomear carrinho">✏️</button><button class="chip" data-wac="${g.gid}" type="button" style="padding:4px 10px;" title="Compartilhar no WhatsApp">📱</button><button class="chip" data-delc="${g.gid}" type="button" style="padding:4px 11px;" title="Excluir carrinho">✕</button></span></div>
       ${lotLabel}${jogosHtml}
       <div class="gmeta"><span class="tagm" style="${g.winLast ? 'background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);border-color:transparent;' : ''}">#${g.ctx.last[0]}: melhor <b>${g.bestLast}</b>${g.winLast ? ' 🏆' : ''}</span><span class="tagm">histórico: melhor <b>${g.bestHist}</b> · premiou <b>${g.winsHist}×</b></span></div>
+      ${fechCapable ? `<div style="margin-top:10px;"><button class="chip" data-fech="${g.gid}" type="button" title="Enviar ${multi ? 'os jogos marcados' : 'este jogo'} para montar um fechamento">🎯 Montar fechamento${multi ? ' (marcados)' : ''}</button></div>` : ''}
     </div>`;
   }).join('');
   $('meusList').querySelectorAll('[data-delc]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.delc.split('|'); deleteCart(p[0], p[1]); }));
   $('meusList').querySelectorAll('[data-wac]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.wac.split('|'); shareCart(p[0], p[1]); }));
   $('meusList').querySelectorAll('[data-rename]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.rename.split('|'); renameCart(p[0], p[1]); }));
   $('meusList').querySelectorAll('[data-delg]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.delg.split('|'); deleteGame(p[0], p[1]); }));
+  const gmap = {}; arr.forEach(g => gmap[g.gid] = g);
+  $('meusList').querySelectorAll('[data-fech]').forEach(b => b.addEventListener('click', () => {
+    const g = gmap[b.dataset.fech]; if (!g) return;
+    const cbs = Array.from($('meusList').querySelectorAll('.fpick')).filter(c => c.dataset.gid === g.gid);
+    let escolhidos;
+    if (cbs.length) { // carrinho com vários jogos: usa só os marcados
+      const ids = new Set(cbs.filter(c => c.checked).map(c => c.dataset.id));
+      if (!ids.size) { alert('Marque pelo menos um jogo deste carrinho para enviar ao fechamento.'); return; }
+      escolhidos = g.jogos.filter(j => ids.has(String(j.id))).map(j => j.nums.slice());
+    } else { // 1 jogo: vai direto
+      escolhidos = g.jogos.map(j => j.nums.slice());
+    }
+    if (g.k !== KEY) { $('lotSel').value = g.k; buildLottery(g.k); try { localStorage.setItem('lotomais-loteria', g.k); } catch (e) {} } // fechamento é da loteria atual
+    const tb = $('tabbar').querySelector('[data-tab="gerar"]'); if (tb) tb.click();
+    copyToFechamento(escolhidos);
+  }));
 }
 // Backup: exportar/importar todas as apostas
 function exportBackup() {
