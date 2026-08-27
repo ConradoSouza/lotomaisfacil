@@ -377,7 +377,6 @@ const APP_URL = 'https://lotomaisfacil.pages.dev/';
 // leva as dezenas dos jogos gerados para o modo Fechamento (bolão = união das dezenas)
 function copyToFechamento(games) {
   $('gerToggle').querySelector('[data-mode="fechamento"]').click();
-  if (!isPro()) { $('fechResult').innerHTML = proNote('Fechamentos'); $('fechMode').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   const flat = games.reduce((a, g) => a.concat(g), []);
   const uni = [...new Set(flat)];
   let pool;
@@ -801,8 +800,19 @@ $('genBtn').addEventListener('click', () => {
 $('gerToggle').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { $('gerToggle').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); const f = b.dataset.mode === 'fechamento'; $('genMode').style.display = f ? 'none' : ''; $('fechMode').style.display = f ? '' : 'none'; }));
 $('surpresinha').addEventListener('click', () => renderOneGame(quickPick(L.apostaMin, null), '🎲 Surpresinha'));
 $('dataBtn').addEventListener('click', () => { const d = ($('dataSorte').value || '').trim(); if (!d) { $('genResults').innerHTML = '<div class="note">Digite uma data (ex.: 15/03/1990).</div>'; return; } renderOneGame(quickPick(L.apostaMin, KEY + '|' + d), '🍀 Números de ' + d); });
+function teaserFechamento(gamesNums) {
+  const amostra = gamesNums.slice(0, 3).map((g, i) => `<div class="game" style="padding:10px 12px;margin-bottom:8px;filter:blur(5px);opacity:.7;pointer-events:none;user-select:none;"><div class="ghead" style="margin-bottom:8px;"><span class="gtitle" style="font-size:13px;">Jogo ${i + 1}</span></div><div class="balls">${g.map(n => ball(n, 'sm')).join('')}</div></div>`).join('');
+  return `<div style="position:relative;margin-top:12px;overflow:hidden;border-radius:14px;">
+    <div>${amostra}</div>
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 55%,transparent),var(--surface) 78%);padding:16px;">
+      <div style="font-size:30px;">🔒</div>
+      <div style="font-weight:800;font-size:15px;margin:4px 0 2px;">Seu fechamento está pronto: ${gamesNums.length} jogo${gamesNums.length > 1 ? 's' : ''}</div>
+      <div class="sub" style="margin:0 0 12px;max-width:320px;">Assine o <b>Pro</b> para <b>ver e baixar</b> todos os jogos (PDF, CSV, WhatsApp) e salvar como carrinho.</div>
+      <button class="btn" id="fechUpgrade" style="width:auto;padding:11px 22px;">⭐ Ver plano Pro</button>
+    </div>
+  </div>`;
+}
 $('fechBtn').addEventListener('click', () => {
-  if (!isPro()) { $('fechResult').innerHTML = proNote('Fechamentos'); return; }
   if (selFech.size < K + 1) { $('fechResult').innerHTML = `<div class="note">Selecione de ${K + 1} a ${L.fechMax} dezenas.</div>`; return; }
   const pool = [...selFech].sort((a, b) => a - b), P = parseInt($('fechGar').value), price = parseFloat($('fechPrice').value) || 0;
   if (P < K) { const m = pool.length, maxDiff = K - P; let cov = 0; for (let d = 0; d <= maxDiff; d++) cov += binom(K, d) * binom(m - K, d);
@@ -813,14 +823,21 @@ $('fechBtn').addEventListener('click', () => {
     const allW = combosIdx(pool.length, K).map(maskOf), ok = P >= K ? true : verifyGuarantee(r.games.map(maskOf), allW, P);
     const unidade = L.total <= 25 ? 'pontos' : 'acertos';
     const gar = P >= K ? `Fecha <b>todos</b> os jogos possíveis do bolão.` : `Se as ${K} sorteadas estiverem entre as suas ${pool.length} dezenas, garante pelo menos <b>${P} ${unidade}</b> em algum jogo ${ok ? '✅' : '⚠️'}.`;
-    const cap = 120, shown = gamesNums.slice(0, cap);
-    let list = shown.map((g, i) => `<div class="game" style="padding:10px 12px;margin-bottom:8px;"><div class="ghead" style="margin-bottom:8px;"><span class="gtitle" style="font-size:13px;">Jogo ${i + 1}</span></div><div class="balls">${g.map(n => ball(n, 'sm')).join('')}</div></div>`).join('');
-    if (gamesNums.length > cap) list += `<div class="note">Mostrando os primeiros ${cap} de ${gamesNums.length} jogos.</div>`;
-    $('fechResult').innerHTML = `<div class="card" style="margin-top:6px;">
+    const resumo = `<div class="card" style="margin-top:6px;">
       <div class="bignum"><span class="b">${gamesNums.length}</span><span class="bd">jogos<br>bolão de ${pool.length} dezenas</span></div>
       <div class="result-line"><span class="k">Garantia</span><span class="v" style="text-align:right;max-width:60%;">${gar}</span></div>
       <div class="result-line"><span class="k">Custo estimado</span><span class="v">${brl(gamesNums.length * price)}</span></div>
       <div class="result-line"><span class="k">Bolão</span><span class="v">${pool.map(pad).join(' ')}</span></div></div>`;
+    // Free: mostra o resultado real (nº de jogos, garantia, custo) mas bloqueia os jogos — teaser de conversão
+    if (!isPro()) {
+      $('fechResult').innerHTML = resumo + teaserFechamento(gamesNums);
+      if ($('fechUpgrade')) $('fechUpgrade').addEventListener('click', openConta);
+      return;
+    }
+    const cap = 120, shown = gamesNums.slice(0, cap);
+    let list = shown.map((g, i) => `<div class="game" style="padding:10px 12px;margin-bottom:8px;"><div class="ghead" style="margin-bottom:8px;"><span class="gtitle" style="font-size:13px;">Jogo ${i + 1}</span></div><div class="balls">${g.map(n => ball(n, 'sm')).join('')}</div></div>`).join('');
+    if (gamesNums.length > cap) list += `<div class="note">Mostrando os primeiros ${cap} de ${gamesNums.length} jogos.</div>`;
+    $('fechResult').innerHTML = resumo;
     // barra de ações (salvar como carrinho, compartilhar, exportar) logo após o resumo
     $('fechResult').appendChild(exportBar('Fechamento — ' + L.nome, gamesNums, KEY + '-fechamento'));
     const listWrap = document.createElement('div'); listWrap.style.marginTop = '12px'; listWrap.innerHTML = list;
@@ -1008,12 +1025,13 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   ? window.supabase.createClient(window.LOTO_CFG.SUPABASE_URL, window.LOTO_CFG.SUPABASE_ANON_KEY)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
-function isPro() { return !!(perfil && perfil.plano === 'pro' && (!perfil.pro_ate || new Date(perfil.pro_ate) > new Date())); }
+function trialAtivo() { return !!(perfil && perfil.trial_ate && new Date(perfil.trial_ate) > new Date()); }
+function isPro() { return !!(perfil && ((perfil.plano === 'pro' && (!perfil.pro_ate || new Date(perfil.pro_ate) > new Date())) || trialAtivo())); }
 function nomeUsuario() { return (perfil && perfil.nome) || (usuario && usuario.email) || ''; }
 
 async function carregarPerfil() {
   if (!SB || !usuario) { perfil = null; return; }
-  try { const { data } = await SB.from('perfis').select('nome,plano,pro_ate').eq('id', usuario.id).single(); perfil = data || { nome: '', plano: 'free' }; }
+  try { const { data } = await SB.from('perfis').select('nome,plano,pro_ate,trial_ate').eq('id', usuario.id).single(); perfil = data || { nome: '', plano: 'free' }; }
   catch (e) { perfil = { nome: '', plano: 'free' }; }
 }
 function atualizarContaBtn() {
@@ -1034,16 +1052,26 @@ function renderContaBody() {
   if (!SB) { body.innerHTML = `<div class="note">As contas ainda não estão configuradas.</div>`; return; }
   if (usuario) {
     const nome = nomeUsuario(), pro = isPro(), ini = (nome[0] || '?').toUpperCase();
+    const emTrial = trialAtivo();
+    const trialDisponivel = !!(perfil && !perfil.trial_ate);
+    const diasTrial = emTrial ? Math.max(1, Math.ceil((new Date(perfil.trial_ate) - Date.now()) / 86400000)) : 0;
+    const benef = `No <b>Pro</b> você libera: fechamentos, gerar muitos jogos de uma vez e sincronizar seus jogos na nuvem.`;
+    let meio;
+    if (pro && emTrial) meio = `<div class="note" style="margin-top:6px;border-color:var(--gold);">🎁 <b>Teste Pro ativo</b> — termina em ${diasTrial} dia(s). Para continuar depois, assine o Pro.</div><button class="btn" id="btnUpgrade" style="margin-top:12px;">⭐ Assinar Pro</button>`;
+    else if (pro) meio = '';
+    else if (trialDisponivel) meio = `<div class="note" style="margin-top:6px;">${benef}</div><button class="btn" id="btnTrial" style="margin-top:12px;">🎁 Ativar 7 dias grátis</button><button class="btn sec" id="btnUpgrade" style="margin-top:10px;">⭐ Assinar Pro (R$ 9,90/30 dias)</button>`;
+    else meio = `<div class="note" style="margin-top:6px;">${benef}</div><button class="btn" id="btnUpgrade" style="margin-top:12px;">⭐ Assinar Pro</button>`;
     body.innerHTML = `<div style="text-align:center;padding:12px 0;">
         <div style="width:60px;height:60px;border-radius:50%;background:var(--violet);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;margin:0 auto 10px;">${ini}</div>
         <div style="font-weight:800;font-size:17px;">${nome}</div>
         <div class="sub" style="margin:2px 0 0;">${usuario.email}</div>
-        <div style="margin-top:12px;"><span class="tagm" style="border-color:transparent;font-size:13px;padding:5px 14px;${pro ? 'background:color-mix(in srgb,var(--gold) 22%,transparent);color:var(--amber);' : ''}">${pro ? '⭐ Plano Pro' : 'Plano Grátis'}</span></div>
+        <div style="margin-top:12px;"><span class="tagm" style="border-color:transparent;font-size:13px;padding:5px 14px;${pro ? 'background:color-mix(in srgb,var(--gold) 22%,transparent);color:var(--amber);' : ''}">${pro ? (emTrial ? '⭐ Pro (teste)' : '⭐ Plano Pro') : 'Plano Grátis'}</span></div>
       </div>
-      ${pro ? '' : `<div class="note" style="margin-top:6px;">No <b>Pro</b> você libera: fechamentos, gerar muitos jogos de uma vez e sincronizar seus jogos na nuvem.</div><button class="btn" id="btnUpgrade" style="margin-top:12px;">⭐ Assinar Pro</button>`}
+      ${meio}
       <button class="btn sec" id="btnSair" style="margin-top:10px;">Sair</button>`;
     $('btnSair').addEventListener('click', sair);
     if ($('btnUpgrade')) $('btnUpgrade').addEventListener('click', assinarPro);
+    if ($('btnTrial')) $('btnTrial').addEventListener('click', ativarTrial);
   } else {
     body.innerHTML = `<p class="sub" style="margin:10px 0 14px;">${modoCadastro ? 'Crie sua conta para salvar e sincronizar seus jogos entre aparelhos.' : 'Entre para acessar seus jogos em qualquer aparelho.'}</p>
       ${modoCadastro ? `<label class="field">Nome<input type="text" id="acNome" autocomplete="name"></label>` : ''}
@@ -1078,6 +1106,23 @@ async function submitAuth() {
     }
     closeConta();
   } catch (e) { erro.textContent = traduzErro(e.message); erro.style.color = 'var(--red)'; erro.style.borderColor = 'var(--red)'; erro.style.display = ''; btn.disabled = false; btn.textContent = txt; }
+}
+async function ativarTrial() {
+  if (!SB || !usuario || !perfil) { openConta(); return; }
+  if (perfil.trial_ate) return; // já usou o teste
+  const btn = $('btnTrial'); if (btn) { btn.disabled = true; btn.textContent = 'Ativando…'; }
+  try {
+    const { data, error } = await SB.rpc('ativar_trial'); // função segura no banco (só o próprio trial_ate, 1× só)
+    if (error) throw error;
+    perfil.trial_ate = data || perfil.trial_ate;
+    renderContaBody();
+    if (typeof aplicarGating === 'function') aplicarGating();
+    if (typeof puxarJogosNuvem === 'function') puxarJogosNuvem();
+    alert('🎉 Pro liberado por 7 dias! Aproveite os fechamentos, a geração em massa e a nuvem.');
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '🎁 Ativar 7 dias grátis'; }
+    alert('Não consegui ativar o teste agora. Tente de novo em instantes.');
+  }
 }
 async function sair() { if (SB) await SB.auth.signOut(); closeConta(); }
 async function assinarPro() {
