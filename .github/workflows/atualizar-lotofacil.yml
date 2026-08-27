@@ -44,3 +44,16 @@ jobs:
             git commit -m "Atualiza concursos das loterias"
             git push
           fi
+
+      - name: Enviar avisos push (se houver resultado novo)
+        if: always()
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+          VAPID_PUBLIC: ${{ secrets.VAPID_PUBLIC }}
+          VAPID_PRIVATE: ${{ secrets.VAPID_PRIVATE }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: |
+          if [ -z "$VAPID_PRIVATE" ]; then echo "Sem VAPID configurado; pulando avisos."; exit 0; fi
+          npm install --no-save web-push@3 >/dev/null 2>&1 || npm install --no-save web-push@3
+          node scripts/notificar.js

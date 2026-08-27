@@ -1,0 +1,12 @@
+{
+  "name": "lotomaisfacil-robo",
+  "private": true,
+  "description": "Scripts do robô (atualização de concursos e envio de avisos push).",
+  "scripts": {
+    "atualizar": "node scripts/atualizar.js",
+    "notificar": "node scripts/notificar.js"
+  },
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

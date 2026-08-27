@@ -1025,6 +1025,7 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   ? window.supabase.createClient(window.LOTO_CFG.SUPABASE_URL, window.LOTO_CFG.SUPABASE_ANON_KEY)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
+const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
 function trialAtivo() { return !!(perfil && perfil.trial_ate && new Date(perfil.trial_ate) > new Date()); }
 function isPro() { return !!(perfil && ((perfil.plano === 'pro' && (!perfil.pro_ate || new Date(perfil.pro_ate) > new Date())) || trialAtivo())); }
 function nomeUsuario() { return (perfil && perfil.nome) || (usuario && usuario.email) || ''; }
@@ -1089,6 +1090,7 @@ function renderContaBody() {
     $('acSenha').addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth(); });
     $('acInstalar').addEventListener('click', () => { if (deferredPrompt) doInstall(); else $('acIosHint').style.display = ''; });
   }
+  if (pushSuportado()) { body.insertAdjacentHTML('beforeend', pushSectionHTML()); wirePush(); }
 }
 async function submitAuth() {
   const email = ($('acEmail').value || '').trim(), senha = $('acSenha').value, erro = $('acErro');
@@ -1163,6 +1165,61 @@ function aplicarGating() {
   if (gc) { gc.max = pro ? 20 : 3; if (!pro && (parseInt(gc.value) || 1) > 3) gc.value = 3; }
   const ft = $('gerToggle') && $('gerToggle').querySelector('[data-mode="fechamento"]');
   if (ft && typeof L !== 'undefined') ft.textContent = (!pro && L.fechamento !== false) ? 'Fechamento 🔒' : 'Fechamento';
+}
+
+/* --------- Push (avisos de resultado) — opt-in --------- */
+function pushSuportado() { return !!(VAPID_PUBLIC && SB && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window); }
+function urlBase64ToUint8Array(base64) {
+  const pad = '='.repeat((4 - base64.length % 4) % 4);
+  const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64), arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+function pushSectionHTML() {
+  return `<div style="border-top:1px solid var(--line);margin-top:16px;padding-top:14px;">
+    <label style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;cursor:pointer;">
+      <span style="flex:1;"><b>🔔 Avisar quando sair o resultado</b><br><span class="sub">Receba uma notificação no aparelho quando um novo sorteio for publicado.</span></span>
+      <input type="checkbox" id="pushToggle" style="width:22px;height:22px;flex:none;margin-top:2px;accent-color:var(--violet);cursor:pointer;">
+    </label>
+    <div id="pushMsg" class="sub" style="margin-top:8px;"></div>
+  </div>`;
+}
+async function wirePush() {
+  const cb = $('pushToggle'); if (!cb) return;
+  const msg = $('pushMsg');
+  if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+    cb.checked = false; cb.disabled = true;
+    if (msg) msg.textContent = 'As notificações estão bloqueadas nas configurações do navegador.';
+    return;
+  }
+  try { const reg = await navigator.serviceWorker.ready; cb.checked = !!(await reg.pushManager.getSubscription()); } catch (e) {}
+  cb.addEventListener('change', async () => {
+    cb.disabled = true; if (msg) msg.textContent = 'Aguarde…';
+    if (cb.checked) { const ok = await ativarPush(); cb.checked = ok; if (msg) msg.textContent = ok ? '✅ Avisos ativados neste aparelho.' : 'Não foi possível ativar (permissão negada?).'; }
+    else { await desativarPush(); if (msg) msg.textContent = 'Avisos desativados neste aparelho.'; }
+    cb.disabled = false;
+  });
+}
+async function ativarPush() {
+  try {
+    if (!pushSuportado()) return false;
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return false;
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC) });
+    const j = sub.toJSON();
+    await SB.from('push_subs').upsert({ endpoint: sub.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, user_id: (usuario && usuario.id) || null }, { onConflict: 'endpoint' });
+    return true;
+  } catch (e) { return false; }
+}
+async function desativarPush() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) { try { await SB.from('push_subs').delete().eq('endpoint', sub.endpoint); } catch (e) {} await sub.unsubscribe(); }
+  } catch (e) {}
 }
 
 /* --------- Sincronização dos jogos (Pro) --------- */

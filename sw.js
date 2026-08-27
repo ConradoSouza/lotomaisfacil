@@ -1,5 +1,5 @@
 /* Loto+Facil — service worker (cache offline) */
-const CACHE = 'lotomais-v33';
+const CACHE = 'lotomais-v34';
 const ASSETS = [
   './',
   './app.html',
@@ -64,4 +64,29 @@ self.addEventListener('fetch', e => {
       return res;
     }).catch(() => hit))
   );
+});
+
+// ===== Push (avisos de resultado) =====
+self.addEventListener('push', e => {
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data ? e.data.text() : '' }; }
+  const title = data.title || 'Loto+Facil';
+  const options = {
+    body: data.body || 'Saiu um novo resultado!',
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    lang: 'pt-BR',
+    tag: data.tag || 'resultado',
+    renotify: true,
+    data: { url: data.url || './app.html' }
+  };
+  e.waitUntil(self.registration.showNotification(title, options));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || './app.html';
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) { if ('focus' in c) { try { c.navigate(url); } catch (err) {} return c.focus(); } }
+    if (self.clients.openWindow) return self.clients.openWindow(url);
+  }));
 });

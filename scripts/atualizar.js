@@ -7,8 +7,10 @@ const fs = require('fs');
 const path = require('path');
 
 const LOTERIAS = ['lotofacil', 'megasena', 'quina', 'lotomania', 'duplasena', 'diadesorte'];
+const NOMES = { lotofacil: 'Lotofácil', megasena: 'Mega-Sena', quina: 'Quina', lotomania: 'Lotomania', duplasena: 'Dupla Sena', diadesorte: 'Dia de Sorte' };
 const alvos = process.argv.slice(2).length ? process.argv.slice(2) : LOTERIAS;
 const DADOS = path.join(__dirname, '..', 'dados');
+const NOVOS = []; // resultados novos desta execução (para o notificar.js)
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 async function getJSON(url, tentativas = 3) {
@@ -91,6 +93,7 @@ async function atualizar(key) {
   }
   if (added.length < (latest - maxLocal)) houveFalha = true; // ficou concurso novo pra trás
   if (!added.length) return;
+  NOVOS.push({ key, nome: NOMES[key] || key, concurso: Math.max.apply(null, added) });
   draws.sort((a, b) => a[0] - b[0]);
   const prem = premiosFrom(lastJson);
   const header = '// Base ' + key + ' — atualização automática. Formato: [concurso, "dd/mm/aaaa", [dezenas]]';
@@ -103,5 +106,6 @@ async function atualizar(key) {
 
 (async () => {
   for (const key of alvos) await atualizar(key);
+  try { fs.writeFileSync(path.join(__dirname, '_novos.json'), JSON.stringify(NOVOS), 'utf8'); } catch (e) {}
   if (houveFalha) { console.error('ATENÇÃO: havia concurso novo que não pôde ser buscado — verifique as fontes.'); process.exitCode = 1; }
 })();
