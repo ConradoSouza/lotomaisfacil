@@ -1198,30 +1198,46 @@ async function wirePush() {
   }
   try { const reg = await navigator.serviceWorker.ready; cb.checked = !!(await reg.pushManager.getSubscription()); } catch (e) {}
   cb.addEventListener('change', async () => {
-    cb.disabled = true; if (msg) msg.textContent = 'Aguarde…';
-    if (cb.checked) { const ok = await ativarPush(); cb.checked = ok; if (msg) msg.textContent = ok ? '✅ Avisos ativados neste aparelho.' : 'Não foi possível ativar (permissão negada?).'; }
-    else { await desativarPush(); if (msg) msg.textContent = 'Avisos desativados neste aparelho.'; }
+    cb.disabled = true; if (msg) { msg.textContent = 'Aguarde…'; msg.style.color = ''; }
+    if (cb.checked) {
+      const r = await ativarPush();
+      cb.checked = (r === 'ok');
+      if (msg) {
+        const txt = {
+          'ok': '✅ Avisos ativados neste aparelho.',
+          'sem-suporte': 'Este navegador/aparelho não suporta notificações. No iPhone, instale o app na tela inicial primeiro.',
+          'sem-permissao': 'Você precisa permitir as notificações para ativar.',
+          'sem-inscricao': 'Não consegui criar a inscrição de push neste aparelho.'
+        }[r] || ('Não consegui salvar a inscrição. ' + r);
+        msg.textContent = txt; msg.style.color = (r === 'ok') ? '' : 'var(--red)';
+      }
+    } else { await desativarPush(); if (msg) { msg.textContent = 'Avisos desativados neste aparelho.'; msg.style.color = ''; } }
     cb.disabled = false;
   });
 }
 async function ativarPush() {
+  if (!pushSuportado()) return 'sem-suporte';
+  let perm;
+  try { perm = await Notification.requestPermission(); } catch (e) { return 'sem-permissao'; }
+  if (perm !== 'granted') return 'sem-permissao';
+  let sub;
   try {
-    if (!pushSuportado()) return false;
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return false;
     const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
+    sub = await reg.pushManager.getSubscription();
     if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC) });
+  } catch (e) { return 'sem-inscricao'; }
+  try {
     const j = sub.toJSON();
-    await SB.from('push_subs').upsert({ endpoint: sub.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, user_id: (usuario && usuario.id) || null }, { onConflict: 'endpoint' });
-    return true;
-  } catch (e) { return false; }
+    const { error } = await SB.rpc('salvar_push', { p_endpoint: sub.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
+    if (error) return 'banco: ' + (error.message || error.code || 'erro');
+    return 'ok';
+  } catch (e) { return 'banco: ' + (e.message || 'exceção'); }
 }
 async function desativarPush() {
   try {
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
-    if (sub) { try { await SB.from('push_subs').delete().eq('endpoint', sub.endpoint); } catch (e) {} await sub.unsubscribe(); }
+    if (sub) { try { await SB.rpc('remover_push', { p_endpoint: sub.endpoint }); } catch (e) {} await sub.unsubscribe(); }
   } catch (e) {}
 }
 
