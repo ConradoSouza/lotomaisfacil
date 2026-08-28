@@ -34,14 +34,24 @@ function ler(nome, fb) { try { return JSON.parse(fs.readFileSync(path.join(__dir
     console.log(`${rotulo}: ${ok} enviado(s), ${mortas} morta(s), ${falhas} falha(s).`);
   }
 
+  // Diagnóstico: quantas inscrições existem no banco
+  let todas = [];
+  try { todas = await rest('push_subs?select=endpoint,p256dh,auth'); } catch (e) { console.log('Erro lendo push_subs: ' + e.message); }
+  console.log('Inscrições no banco: ' + todas.length);
+
+  // Modo teste (workflow_dispatch com teste=true): manda um push agora pra todos
+  if (process.env.TESTE === '1' || process.env.TESTE === 'true') {
+    const payload = JSON.stringify({ title: '🔔 Teste de notificação', body: 'Se você recebeu isto, os avisos estão funcionando! 🍀', url: APP_URL, tag: 'teste' });
+    await enviar(todas, payload, 'Teste');
+    return;
+  }
+
   // 1) Resultado novo -> todos os inscritos
   const novos = ler('_novos.json', []);
   if (Array.isArray(novos) && novos.length) {
     const lista = novos.map(n => `${n.nome} #${n.concurso}`).join(', ');
     const payload = JSON.stringify({ title: '🍀 Saiu o resultado!', body: lista + '. Veja se você ganhou!', url: APP_URL, tag: 'resultado' });
-    let subs = [];
-    try { subs = await rest('push_subs?select=endpoint,p256dh,auth'); } catch (e) { console.log('Falha ao ler inscrições: ' + e.message); }
-    await enviar(subs, payload, 'Resultado (' + lista + ')');
+    await enviar(todas, payload, 'Resultado (' + lista + ')');
   } else {
     console.log('Sem resultados novos para notificar.');
   }

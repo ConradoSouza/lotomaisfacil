@@ -13,7 +13,12 @@ on:
     - cron: '0 4 * * *'    # ~01h BRT
     - cron: '0 11 * * *'   # ~08h BRT — reforço na manhã seguinte
     - cron: '0 15 * * 0'   # Domingo ~12h BRT — sorteios que passaram de sábado p/ domingo 11h
-  workflow_dispatch: {}    # permite rodar manualmente pelo botão do GitHub
+  workflow_dispatch:       # permite rodar manualmente pelo botão do GitHub
+    inputs:
+      teste:
+        description: 'Enviar uma notificação de TESTE aos inscritos'
+        type: boolean
+        default: false
 
 jobs:
   atualizar:
@@ -53,6 +58,7 @@ jobs:
           VAPID_PUBLIC: ${{ secrets.VAPID_PUBLIC }}
           VAPID_PRIVATE: ${{ secrets.VAPID_PRIVATE }}
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+          TESTE: ${{ github.event.inputs.teste }}
         run: |
           if [ -z "$VAPID_PRIVATE" ]; then echo "Sem VAPID configurado; pulando avisos."; exit 0; fi
           npm install --no-save web-push@3 >/dev/null 2>&1 || npm install --no-save web-push@3
