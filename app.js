@@ -1026,7 +1026,7 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
-const APP_VER = 'v37';
+const APP_VER = 'v38';
 function trialAtivo() { return !!(perfil && perfil.trial_ate && new Date(perfil.trial_ate) > new Date()); }
 function isPro() { return !!(perfil && ((perfil.plano === 'pro' && (!perfil.pro_ate || new Date(perfil.pro_ate) > new Date())) || trialAtivo())); }
 function nomeUsuario() { return (perfil && perfil.nome) || (usuario && usuario.email) || ''; }
@@ -1242,6 +1242,18 @@ async function desativarPush() {
     if (sub) { try { await SB.rpc('remover_push', { p_endpoint: sub.endpoint }); } catch (e) {} await sub.unsubscribe(); }
   } catch (e) {}
 }
+// Ao abrir o app: se já existe uma inscrição no navegador, garante que ela está no banco.
+// Conserta quem se inscreveu numa versão antiga (inscrição no navegador, mas sem gravar no banco).
+async function sincronizarPush() {
+  try {
+    if (!pushSuportado() || (typeof Notification !== 'undefined' && Notification.permission !== 'granted')) return;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return;
+    const j = sub.toJSON();
+    await SB.rpc('salvar_push', { p_endpoint: sub.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
+  } catch (e) {}
+}
 
 /* --------- Sincronização dos jogos (Pro) --------- */
 async function puxarJogosNuvem() {
@@ -1403,6 +1415,7 @@ async function carregarQuaisHoje() {
   catchUp(key);
   carregarQuaisHoje();
   initAuth();
+  setTimeout(sincronizarPush, 3000); // regrava a inscrição de push no banco, se houver
 })();
 
 if ('serviceWorker' in navigator) {
