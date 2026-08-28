@@ -1026,6 +1026,7 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
+const APP_VER = 'v37';
 function trialAtivo() { return !!(perfil && perfil.trial_ate && new Date(perfil.trial_ate) > new Date()); }
 function isPro() { return !!(perfil && ((perfil.plano === 'pro' && (!perfil.pro_ate || new Date(perfil.pro_ate) > new Date())) || trialAtivo())); }
 function nomeUsuario() { return (perfil && perfil.nome) || (usuario && usuario.email) || ''; }
@@ -1186,6 +1187,7 @@ function pushSectionHTML() {
       <input type="checkbox" id="pushToggle" style="width:22px;height:22px;flex:none;margin-top:2px;accent-color:var(--violet);cursor:pointer;">
     </label>
     <div id="pushMsg" class="sub" style="margin-top:8px;"></div>
+    <div class="sub" style="margin-top:10px;text-align:right;opacity:.6;font-size:11px;">Loto+Facil ${APP_VER}</div>
   </div>`;
 }
 async function wirePush() {
