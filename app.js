@@ -576,6 +576,50 @@ function refreshEst() {
   $('estQtdA').innerHTML = vals.length ? options(vals, def) : '<option value="0">—</option>';
   refreshEstComp();
 }
+// Variante diversificada: cobre todas as dezenas, equilibra pares/ímpares e faixas, controla repetição entre vizinhos.
+function gerarDiversificado(count) {
+  const fix = [...selEstFix], pool = NUMS.filter(n => !selEstFix.has(n));
+  const uso = {}; NUMS.forEach(n => uso[n] = 0);
+  const perFaixa = K / faixaDefs.length, jogos = [];
+  for (let i = 0; i < count; i++) {
+    const jogo = new Set(fix), prev = i > 0 ? new Set(jogos[i - 1]) : null;
+    const overlapAlvo = Math.round((K - fix.length) * 0.5);
+    const faixaCount = faixaDefs.map(([a, b]) => [...jogo].filter(n => n >= a && n <= b).length);
+    let pares = [...jogo].filter(n => n % 2 === 0).length, overlap = 0;
+    while (jogo.size < K) {
+      let best = null, bestScore = -Infinity;
+      for (const n of pool) {
+        if (jogo.has(n)) continue;
+        const fi = faixaDefs.findIndex(([a, b]) => n >= a && n <= b), even = n % 2 === 0, impares = jogo.size - pares;
+        let s = -uso[n] * 3;                                   // cobertura: prioriza as menos usadas
+        if (faixaCount[fi] >= Math.ceil(perFaixa)) s -= 4;     // não estoura a faixa
+        s += even ? (pares <= impares ? 1 : -1) : (impares <= pares ? 1 : -1); // equilíbrio par/ímpar
+        if (prev && prev.has(n)) s += overlap < overlapAlvo ? 2 : -2;          // repetição controlada
+        s += Math.random() * 1.5;                              // variedade
+        if (s > bestScore) { bestScore = s; best = { n, fi }; }
+      }
+      if (!best) break;
+      jogo.add(best.n); uso[best.n]++; faixaCount[best.fi]++;
+      if (best.n % 2 === 0) pares++;
+      if (prev && prev.has(best.n)) overlap++;
+    }
+    jogos.push([...jogo].sort((a, b) => a - b));
+  }
+  return jogos;
+}
+function renderEstJogos(out, resumo) {
+  const html = out.map((g, i) => { const m = gameMeta(g); return `<div class="game"><div class="ghead"><span class="gtitle">Jogo ${i + 1}</span><span class="tagm">Score médio <b>${m.avgScore.toFixed(0)}</b></span></div>
+    <div class="balls">${g.map(n => ball(n, selEstFix.has(n) ? 'sm gold' : 'sm')).join('')}</div>
+    <div class="gmeta"><span class="tagm">Soma <b>${m.soma}</b></span><span class="tagm">${m.pares}P / ${m.impares}I</span><span class="tagm">Faixas ${m.fc.join('-')}</span></div></div>`; }).join('');
+  $('estResult').innerHTML = resumo + html;
+  const bar = exportBar('Jogos por grupos — ' + L.nome, out, KEY + '-grupos', false);
+  if (L.fechamento !== false) {
+    const mk = document.createElement('button'); mk.className = 'chip'; mk.type = 'button'; mk.textContent = '🎯 Montar fechamento com estes jogos';
+    mk.addEventListener('click', () => copyToFechamento(out));
+    bar.insertBefore(mk, bar.firstChild);
+  }
+  $('estResult').appendChild(bar);
+}
 
 // grid de dezenas fixas/excluídas do gerador (toque cicla: neutro -> fixa -> excluída)
 const fixadas = new Set(), excluidas = new Set();
@@ -776,6 +820,7 @@ function buildLottery(key) {
   if ($('estFix') && gruposOk) {
     $('estJanela').innerHTML = options([20, 30, 50, 100, 0], 30, v => v === 0 ? 'todos os concursos' : v + ' concursos');
     buildPicker($('estFix'), selEstFix, estFixMax, () => { estFixMsg(); refreshEst(); });
+    if ($('estDiv')) { $('estDiv').checked = false; ['estStep1', 'estStep3', 'estStep4'].forEach(id => { const el = $(id); if (el) el.style.display = ''; }); $('estDivNote').style.display = 'none'; }
     refreshEst();
   }
 
@@ -871,12 +916,30 @@ $('estFixClear').addEventListener('click', () => {
   Array.from($('estFix').children).forEach(c => c.classList.remove('sel'));
   estFixMsg(); refreshEst();
 });
+$('estDiv').addEventListener('change', () => {
+  const on = $('estDiv').checked;
+  ['estStep1', 'estStep3', 'estStep4'].forEach(id => { const el = $(id); if (el) el.style.display = on ? 'none' : ''; });
+  $('estDivNote').style.display = on ? '' : 'none';
+});
 $('estBtn').addEventListener('click', () => {
+  const count = Math.max(1, Math.min(isPro() ? 20 : 3, parseInt($('estCount').value) || 1));
+  const nf = selEstFix.size;
+  if (nf >= K) { $('estResult').innerHTML = `<div class="note">Você fixou ${nf} dezenas, mas o jogo tem ${K}. Reduza as fixas.</div>`; return; }
+  // Variante diversificada
+  if ($('estDiv') && $('estDiv').checked) {
+    const out = gerarDiversificado(count);
+    if (!out.length) { $('estResult').innerHTML = `<div class="note">Não consegui montar os jogos. Tente ajustar.</div>`; return; }
+    const usadas = new Set(); out.forEach(j => j.forEach(n => usadas.add(n)));
+    const overlaps = out.slice(1).map((j, i) => { const p = new Set(out[i]); return j.filter(n => p.has(n)).length; });
+    const resumo = `<div class="note">✨ <b>${out.length}</b> jogo(s) diversificados · cobertura: <b>${usadas.size}</b> de ${NUMS.length} dezenas${overlaps.length ? ` · repetição entre vizinhos: <b>${overlaps.join('-')}</b>` : ''}. <span style="color:var(--muted);">(fixas em dourado)</span></div>`;
+    renderEstJogos(out, resumo);
+    return;
+  }
+  // Variante por grupos (quentes × frias)
   const { A, B, w } = estGrupos();
-  const nf = selEstFix.size, restante = K - nf, aA = parseInt($('estQtdA').value) || 0, aB = restante - aA;
+  const restante = K - nf, aA = parseInt($('estQtdA').value) || 0, aB = restante - aA;
   if (aA + aB + nf !== K || aA < 0 || aB < 0) { $('estResult').innerHTML = `<div class="note">A composição precisa somar <b>${K}</b> dezenas. Ajuste as fixas ou o Grupo A.</div>`; return; }
   if (aA > A.length || aB > B.length) { $('estResult').innerHTML = `<div class="note">Não há dezenas suficientes: Grupo A tem ${A.length} e Grupo B tem ${B.length}. Reduza as fixas ou a quantidade por grupo.</div>`; return; }
-  const count = Math.max(1, Math.min(isPro() ? 20 : 3, parseInt($('estCount').value) || 1));
   const fix = [...selEstFix].sort((a, b) => a - b), out = [], vistos = new Set();
   for (let t = 0; out.length < count && t < count * 80; t++) {
     const g = fix.concat(pickN(A, aA), pickN(B, aB)).sort((a, b) => a - b);
@@ -885,18 +948,8 @@ $('estBtn').addEventListener('click', () => {
     vistos.add(key); out.push(g);
   }
   if (!out.length) { $('estResult').innerHTML = `<div class="note">Não consegui montar jogos com essa composição. Tente ajustar.</div>`; return; }
-  const html = out.map((g, i) => { const m = gameMeta(g); return `<div class="game"><div class="ghead"><span class="gtitle">Jogo ${i + 1}</span><span class="tagm">Score médio <b>${m.avgScore.toFixed(0)}</b></span></div>
-    <div class="balls">${g.map(n => ball(n, selEstFix.has(n) ? 'sm gold' : 'sm')).join('')}</div>
-    <div class="gmeta"><span class="tagm">Soma <b>${m.soma}</b></span><span class="tagm">${m.pares}P / ${m.impares}I</span><span class="tagm">Faixas ${m.fc.join('-')}</span></div></div>`; }).join('');
   const resumo = `<div class="note">📊 <b>${out.length}</b> jogo(s) · 🔥 ${aA} de A + ❄️ ${aB} de B + 📌 ${nf} fixa(s) · análise dos últimos ${w === 0 ? 'todos os' : w} concursos. <span style="color:var(--muted);">(as fixas aparecem em dourado)</span></div>`;
-  $('estResult').innerHTML = resumo + html;
-  const bar = exportBar('Jogos por grupos — ' + L.nome, out, KEY + '-grupos', false);
-  if (L.fechamento !== false) {
-    const mk = document.createElement('button'); mk.className = 'chip'; mk.type = 'button'; mk.textContent = '🎯 Montar fechamento com estes jogos';
-    mk.addEventListener('click', () => copyToFechamento(out));
-    bar.insertBefore(mk, bar.firstChild);
-  }
-  $('estResult').appendChild(bar);
+  renderEstJogos(out, resumo);
 });
 $('surpresinha').addEventListener('click', () => renderOneGame(quickPick(L.apostaMin, null), '🎲 Surpresinha'));
 $('dataBtn').addEventListener('click', () => { const d = ($('dataSorte').value || '').trim(); if (!d) { $('genResults').innerHTML = '<div class="note">Digite uma data (ex.: 15/03/1990).</div>'; return; } renderOneGame(quickPick(L.apostaMin, KEY + '|' + d), '🍀 Números de ' + d); });
@@ -1126,7 +1179,7 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
-const APP_VER = 'v39';
+const APP_VER = 'v40';
 function trialAtivo() { return !!(perfil && perfil.trial_ate && new Date(perfil.trial_ate) > new Date()); }
 function isPro() { return !!(perfil && ((perfil.plano === 'pro' && (!perfil.pro_ate || new Date(perfil.pro_ate) > new Date())) || trialAtivo())); }
 function nomeUsuario() { return (perfil && perfil.nome) || (usuario && usuario.email) || ''; }

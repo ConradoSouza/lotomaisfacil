@@ -469,7 +469,15 @@
     <div id="estMode" style="display:none;">
       <p class="sub">Monta jogos combinando as dezenas <b>mais quentes</b> e <b>mais frias</b> de um período, com <b>dezenas fixas</b> à sua escolha — ideal para desdobramentos por grupos.</p>
 
-      <section class="block">
+      <div class="card" style="margin-bottom:14px;">
+        <div class="toggle-row">
+          <div><div class="tl">✨ Diversificar</div><div class="td">cobre todas as dezenas, equilibra pares/ímpares e faixas e varia entre jogos (ignora os grupos)</div></div>
+          <label class="sw"><input type="checkbox" id="estDiv"><span class="track"></span></label>
+        </div>
+        <div id="estDivNote" class="note" style="display:none;margin-top:10px;">No modo diversificado o app distribui as dezenas cobrindo todas ao menos uma vez, equilibra pares/ímpares e as faixas, e controla a repetição entre jogos vizinhos. Escolha só as fixas (opcional) e quantos jogos.</div>
+      </div>
+
+      <section class="block" id="estStep1">
         <h3>1. Período da análise <button class="qbtn" data-tip="Quantos concursos recentes usar para separar as dezenas quentes (que mais saíram) das frias (que menos saíram).">?</button></h3>
         <div class="card">
           <label class="field">Analisar os últimos
@@ -490,12 +498,12 @@
         </div>
       </section>
 
-      <section class="block">
+      <section class="block" id="estStep3">
         <h3>3. Grupos do período <span class="hint">quentes × frias</span></h3>
         <div id="estGrupos"></div>
       </section>
 
-      <section class="block">
+      <section class="block" id="estStep4">
         <h3>4. Composição de cada jogo</h3>
         <div class="card">
           <label class="field">Dezenas do Grupo 🔥 quentes (A) em cada jogo
