@@ -519,7 +519,7 @@ function runBacktest(weights, topK, range) {
 }
 
 /* ================= Pickers (rebuild por loteria) ================= */
-const selConferir = new Set(), selMeus = new Set(), selFech = new Set();
+const selConferir = new Set(), selMeus = new Set(), selFech = new Set(), selEstFix = new Set();
 function buildPicker(container, set, maxFn, onChange) {
   container.innerHTML = ''; set.clear();
   container.style.gridTemplateColumns = `repeat(${L.cols},1fr)`;
@@ -538,6 +538,44 @@ function buildPicker(container, set, maxFn, onChange) {
 function conferirMsg() { $('pickMsg').textContent = `${selConferir.size} dezena(s) · escolha de ${L.apostaMin} a ${L.apostaMax}`; }
 function meusMsg() { $('meusPickMsg').textContent = `${selMeus.size} dezena(s) selecionada(s) · ${L.apostaMin} a ${L.apostaMax}`; }
 function fechMsg() { $('fechMsg').textContent = `${selFech.size} dezena(s) · escolha de ${K + 1} a ${L.fechMax}`; }
+
+/* ===== Estratégia por grupos (quentes × frias) + dezenas fixas ===== */
+function pickN(arr, n) { const c = arr.slice(), r = []; for (let i = 0; i < n && c.length; i++) r.push(c.splice(Math.floor(Math.random() * c.length), 1)[0]); return r; }
+function estFixMax() { return Math.max(0, Math.min(K - 1, 6)); }
+function estFixMsg() { if ($('estFixMsg')) $('estFixMsg').textContent = `${selEstFix.size} fixa(s) · até ${estFixMax()}`; }
+function estGrupos() {
+  const w = parseInt($('estJanela').value) || 30;
+  const { f } = freqWindow(w);
+  const pool = NUMS.filter(n => !selEstFix.has(n));
+  const ordenado = pool.slice().sort((a, b) => (f[b] - f[a]) || (a - b));
+  const gtam = Math.min(9, Math.max(1, Math.floor(pool.length / 2)));
+  return { f, A: ordenado.slice(0, gtam), B: ordenado.slice(pool.length - gtam), gtam, w };
+}
+function refreshEstComp() {
+  if (!$('estCompMsg')) return;
+  const nf = selEstFix.size, restante = K - nf, aA = parseInt($('estQtdA').value) || 0, aB = restante - aA;
+  const ok = (aA + aB + nf === K) && aA >= 0 && aB >= 0;
+  $('estCompMsg').innerHTML = `Cada jogo: 🔥 <b>${aA}</b> de A + ❄️ <b>${Math.max(0, aB)}</b> de B + 📌 <b>${nf}</b> fixa(s) = <b>${aA + Math.max(0, aB) + nf}</b> dezenas`
+    + (ok ? '' : ` <span style="color:var(--red);">(precisa somar ${K})</span>`);
+}
+function refreshEst() {
+  if (!$('estGrupos')) return;
+  const { f, A, B, gtam, w } = estGrupos();
+  const chip = (n, bg, cor) => `<span class="tagm" style="border-color:transparent;background:${bg};color:${cor};">${pad(n)}<b style="margin-left:5px;opacity:.8;">${f[n]}</b></span>`;
+  $('estGrupos').innerHTML = `<div class="card">
+    <div style="font-weight:800;margin-bottom:7px;">🔥 Grupo A — ${gtam} mais quentes <span class="hint">nº = vezes que saiu em ${w === 0 ? 'todos' : w} concursos</span></div>
+    <div class="chips">${A.map(n => chip(n, 'color-mix(in srgb,var(--red) 13%,transparent)', 'var(--red)')).join('')}</div>
+    <div style="font-weight:800;margin:13px 0 7px;">❄️ Grupo B — ${gtam} mais frias</div>
+    <div class="chips">${B.map(n => chip(n, 'color-mix(in srgb,var(--violet) 13%,transparent)', 'var(--violet)')).join('')}</div>
+  </div>`;
+  const nf = selEstFix.size, restante = K - nf;
+  const minA = Math.max(0, restante - gtam), maxA = Math.min(gtam, restante), vals = [];
+  for (let a = minA; a <= maxA; a++) vals.push(a);
+  const cur = parseInt($('estQtdA').value);
+  const def = (cur >= minA && cur <= maxA) ? cur : Math.min(maxA, Math.ceil(restante / 2));
+  $('estQtdA').innerHTML = vals.length ? options(vals, def) : '<option value="0">—</option>';
+  refreshEstComp();
+}
 
 // grid de dezenas fixas/excluídas do gerador (toque cicla: neutro -> fixa -> excluída)
 const fixadas = new Set(), excluidas = new Set();
@@ -731,14 +769,25 @@ function buildLottery(key) {
   buildPicker($('fechPicker'), selFech, () => L.fechMax, fechMsg);
   buildFixGrid();
 
+  // modo "Grupos": picker de fixas + período; some onde a aposta padrão não é K dezenas (ex.: Lotomania)
+  const gruposOk = K >= L.apostaMin && K <= L.apostaMax;
+  const gbtn = $('gerToggle').querySelector('[data-mode="grupos"]');
+  if (gbtn) gbtn.style.display = gruposOk ? '' : 'none';
+  if ($('estFix') && gruposOk) {
+    $('estJanela').innerHTML = options([20, 30, 50, 100, 0], 30, v => v === 0 ? 'todos os concursos' : v + ' concursos');
+    buildPicker($('estFix'), selEstFix, estFixMax, () => { estFixMsg(); refreshEst(); });
+    refreshEst();
+  }
+
   // fechamento (esconder onde não faz sentido, ex.: Lotomania)
   const fbtn = $('gerToggle').querySelector('[data-mode="fechamento"]');
   if (fbtn) fbtn.style.display = L.fechamento === false ? 'none' : '';
-  $('gerToggle').querySelectorAll('button').forEach((b, i) => b.classList.toggle('on', i === 0));
-  $('genMode').style.display = ''; $('fechMode').style.display = 'none';
+  $('gerToggle').querySelectorAll('button').forEach(b => b.classList.remove('on'));
+  $('gerToggle').querySelector('[data-mode="estrategia"]').classList.add('on');
+  $('genMode').style.display = ''; $('fechMode').style.display = 'none'; $('estMode').style.display = 'none';
 
   // reset áreas de resultado
-  ['genResults', 'checkResults', 'fechResult', 'labResult', 'mcResult'].forEach(id => $(id).innerHTML = '');
+  ['genResults', 'checkResults', 'fechResult', 'labResult', 'mcResult', 'estResult'].forEach(id => $(id).innerHTML = '');
   labRuns = []; $('labCompareWrap').style.display = 'none';
   $('presetChips').querySelectorAll('.chip').forEach((c, i) => c.classList.toggle('on', i === 0));
   applyPreset('equilibrada');
@@ -797,7 +846,58 @@ $('genBtn').addEventListener('click', () => {
   $('genResults').appendChild(exportBar('Jogos gerados — ' + L.nome, out, KEY + '-jogos', true));
 });
 
-$('gerToggle').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { $('gerToggle').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); const f = b.dataset.mode === 'fechamento'; $('genMode').style.display = f ? 'none' : ''; $('fechMode').style.display = f ? '' : 'none'; }));
+$('gerToggle').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  $('gerToggle').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on');
+  const m = b.dataset.mode;
+  $('genMode').style.display = m === 'estrategia' ? '' : 'none';
+  $('estMode').style.display = m === 'grupos' ? '' : 'none';
+  $('fechMode').style.display = m === 'fechamento' ? '' : 'none';
+  if (m === 'grupos') refreshEst();
+}));
+
+/* Modo Grupos (quentes × frias) */
+$('estJanela').addEventListener('change', refreshEst);
+$('estQtdA').addEventListener('change', refreshEstComp);
+$('estFixHot').addEventListener('click', () => {
+  if (selEstFix.size >= estFixMax()) return;
+  const n = estGrupos().A[0]; // a mais quente do período ainda não fixada
+  if (n == null) return;
+  selEstFix.add(n);
+  const idx = NUMS.indexOf(n), cells = $('estFix').children; if (cells[idx]) cells[idx].classList.add('sel');
+  estFixMsg(); refreshEst();
+});
+$('estFixClear').addEventListener('click', () => {
+  selEstFix.clear();
+  Array.from($('estFix').children).forEach(c => c.classList.remove('sel'));
+  estFixMsg(); refreshEst();
+});
+$('estBtn').addEventListener('click', () => {
+  const { A, B, w } = estGrupos();
+  const nf = selEstFix.size, restante = K - nf, aA = parseInt($('estQtdA').value) || 0, aB = restante - aA;
+  if (aA + aB + nf !== K || aA < 0 || aB < 0) { $('estResult').innerHTML = `<div class="note">A composição precisa somar <b>${K}</b> dezenas. Ajuste as fixas ou o Grupo A.</div>`; return; }
+  if (aA > A.length || aB > B.length) { $('estResult').innerHTML = `<div class="note">Não há dezenas suficientes: Grupo A tem ${A.length} e Grupo B tem ${B.length}. Reduza as fixas ou a quantidade por grupo.</div>`; return; }
+  const count = Math.max(1, Math.min(isPro() ? 20 : 3, parseInt($('estCount').value) || 1));
+  const fix = [...selEstFix].sort((a, b) => a - b), out = [], vistos = new Set();
+  for (let t = 0; out.length < count && t < count * 80; t++) {
+    const g = fix.concat(pickN(A, aA), pickN(B, aB)).sort((a, b) => a - b);
+    const key = g.join(',');
+    if (g.length !== K || vistos.has(key)) continue;
+    vistos.add(key); out.push(g);
+  }
+  if (!out.length) { $('estResult').innerHTML = `<div class="note">Não consegui montar jogos com essa composição. Tente ajustar.</div>`; return; }
+  const html = out.map((g, i) => { const m = gameMeta(g); return `<div class="game"><div class="ghead"><span class="gtitle">Jogo ${i + 1}</span><span class="tagm">Score médio <b>${m.avgScore.toFixed(0)}</b></span></div>
+    <div class="balls">${g.map(n => ball(n, selEstFix.has(n) ? 'sm gold' : 'sm')).join('')}</div>
+    <div class="gmeta"><span class="tagm">Soma <b>${m.soma}</b></span><span class="tagm">${m.pares}P / ${m.impares}I</span><span class="tagm">Faixas ${m.fc.join('-')}</span></div></div>`; }).join('');
+  const resumo = `<div class="note">📊 <b>${out.length}</b> jogo(s) · 🔥 ${aA} de A + ❄️ ${aB} de B + 📌 ${nf} fixa(s) · análise dos últimos ${w === 0 ? 'todos os' : w} concursos. <span style="color:var(--muted);">(as fixas aparecem em dourado)</span></div>`;
+  $('estResult').innerHTML = resumo + html;
+  const bar = exportBar('Jogos por grupos — ' + L.nome, out, KEY + '-grupos', false);
+  if (L.fechamento !== false) {
+    const mk = document.createElement('button'); mk.className = 'chip'; mk.type = 'button'; mk.textContent = '🎯 Montar fechamento com estes jogos';
+    mk.addEventListener('click', () => copyToFechamento(out));
+    bar.insertBefore(mk, bar.firstChild);
+  }
+  $('estResult').appendChild(bar);
+});
 $('surpresinha').addEventListener('click', () => renderOneGame(quickPick(L.apostaMin, null), '🎲 Surpresinha'));
 $('dataBtn').addEventListener('click', () => { const d = ($('dataSorte').value || '').trim(); if (!d) { $('genResults').innerHTML = '<div class="note">Digite uma data (ex.: 15/03/1990).</div>'; return; } renderOneGame(quickPick(L.apostaMin, KEY + '|' + d), '🍀 Números de ' + d); });
 function teaserFechamento(gamesNums) {
@@ -1026,7 +1126,7 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
-const APP_VER = 'v38';
+const APP_VER = 'v39';
 function trialAtivo() { return !!(perfil && perfil.trial_ate && new Date(perfil.trial_ate) > new Date()); }
 function isPro() { return !!(perfil && ((perfil.plano === 'pro' && (!perfil.pro_ate || new Date(perfil.pro_ate) > new Date())) || trialAtivo())); }
 function nomeUsuario() { return (perfil && perfil.nome) || (usuario && usuario.email) || ''; }

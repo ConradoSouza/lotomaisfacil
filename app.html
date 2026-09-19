@@ -383,6 +383,7 @@
     <h2 class="page">Gerar jogos <button class="qbtn" data-tip="<b>Estratégia</b>: jeito pronto de montar o jogo. <b>Filtros</b>: regras (repetir do último, pares/ímpares, soma, faixas). <b>Fechamento</b>: bolão com garantia de prêmio mínimo.">?</button></h2>
     <div class="seg" id="gerToggle" style="margin:2px 0 16px;">
       <button data-mode="estrategia" class="on">Por estratégia</button>
+      <button data-mode="grupos">Grupos 🔥❄️</button>
       <button data-mode="fechamento">Fechamento</button>
     </div>
 
@@ -464,6 +465,56 @@
     <div id="genResults"></div>
     <p class="footer-note" style="margin-top:8px;">Os filtros moldam a composição do jogo — não aumentam a chance real de acerto. A Lotofácil é aleatória.</p>
     </div><!-- /genMode -->
+
+    <div id="estMode" style="display:none;">
+      <p class="sub">Monta jogos combinando as dezenas <b>mais quentes</b> e <b>mais frias</b> de um período, com <b>dezenas fixas</b> à sua escolha — ideal para desdobramentos por grupos.</p>
+
+      <section class="block">
+        <h3>1. Período da análise <button class="qbtn" data-tip="Quantos concursos recentes usar para separar as dezenas quentes (que mais saíram) das frias (que menos saíram).">?</button></h3>
+        <div class="card">
+          <label class="field">Analisar os últimos
+            <select id="estJanela"></select>
+          </label>
+        </div>
+      </section>
+
+      <section class="block">
+        <h3>2. Dezenas fixas <span class="hint">entram em todos os jogos</span></h3>
+        <div class="card">
+          <div class="picker" id="estFix" style="margin-bottom:10px;"></div>
+          <p class="sub" id="estFixMsg" style="text-align:center;"></p>
+          <div class="chips" style="justify-content:center;">
+            <button class="chip" id="estFixHot" type="button">➕ mais quente</button>
+            <button class="chip" id="estFixClear" type="button">Limpar fixas</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="block">
+        <h3>3. Grupos do período <span class="hint">quentes × frias</span></h3>
+        <div id="estGrupos"></div>
+      </section>
+
+      <section class="block">
+        <h3>4. Composição de cada jogo</h3>
+        <div class="card">
+          <label class="field">Dezenas do Grupo 🔥 quentes (A) em cada jogo
+            <select id="estQtdA"></select>
+          </label>
+          <p class="sub" id="estCompMsg" style="margin-top:10px;"></p>
+        </div>
+      </section>
+
+      <section class="block">
+        <label class="field">Quantos jogos
+          <input type="number" id="estCount" value="10" min="1" max="20">
+        </label>
+        <button class="btn" id="estBtn">Gerar jogos</button>
+      </section>
+
+      <div id="estResult"></div>
+      <p class="footer-note" style="margin-top:8px;">Agrupar por quentes/frias organiza o desdobramento — <b>não aumenta</b> a chance real. A loteria é aleatória.</p>
+    </div><!-- /estMode -->
 
     <div id="fechMode" style="display:none;">
       <p class="sub">Escolha um bolão de dezenas e gere um conjunto reduzido de jogos com <b>garantia de prêmio mínimo</b> — se as 15 sorteadas estiverem entre as suas dezenas.</p>
