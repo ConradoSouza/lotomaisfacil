@@ -851,6 +851,27 @@ function buildLottery(key) {
   buildPicker($('picker'), selConferir, () => L.apostaMax, conferirMsg);
   buildPicker($('meusPicker'), selMeus, () => L.apostaMax, meusMsg);
   buildFechPicker();
+  if ($('fechPresets')) {
+    const uni = L.total <= 25 ? 'pts' : 'ac';
+    const combos = [[K + 1, K - 1], [K + 2, K - 2], [K + 3, K - 2], [K + 3, K - 1]]
+      .filter(([n, p]) => n <= L.fechMax && n <= L.total && p >= K + 1 - n && L.premios.includes(p) && p < K);
+    const vistos = new Set();
+    const unicos = combos.filter(([n, p]) => { const k = n + '|' + p; if (vistos.has(k)) return false; vistos.add(k); return true; });
+    $('fechPresets').innerHTML = unicos.map(([n, p]) => `<span class="chip fechpreset" data-n="${n}" data-p="${p}">${n} nº → ${p} ${uni}</span>`).join('');
+    $('fechPresets').querySelectorAll('.fechpreset').forEach(ch => ch.addEventListener('click', () => {
+      const n = +ch.dataset.n, p = +ch.dataset.p, uniF = L.total <= 25 ? 'pontos' : 'acertos';
+      buildFechPicker();
+      const top = [...NUMS].sort((a, b) => (score[b] - score[a]) || (a - b)).slice(0, n).sort((a, b) => a - b);
+      const cells = $('fechPicker').children;
+      top.forEach(x => { const idx = NUMS.indexOf(x); if (cells[idx]) { selFech.add(x); cells[idx].classList.add('sel'); } });
+      fechMsg();
+      $('fechGar').value = p;
+      const price = parseFloat($('fechPrice').value) || 0;
+      const jogos = fechPesado(n, K, p) ? null : calcularFech(top, [], p).gamesNums.length;
+      $('fechResult').innerHTML = `<div class="note">⚡ Bolão de <b>${n}</b> dezenas (as ${n} melhores ranqueadas) garantindo <b>${p} ${uniF}</b> → ${jogos == null ? 'toque em <b>Gerar fechamento</b> para calcular' : `<b>${jogos}</b> jogos${price ? ' · ' + brl(jogos * price) : ''}`}. Ajuste as dezenas se quiser e toque em <b>Gerar fechamento</b>.</div>`;
+      $('fechPicker').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }));
+  }
   buildFixGrid();
 
   // modo "Grupos": picker de fixas + período; some onde a aposta padrão não é K dezenas (ex.: Lotomania)
@@ -1284,7 +1305,7 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
-const APP_VER = 'v42';
+const APP_VER = 'v43';
 function trialAtivo() { return !!(perfil && perfil.trial_ate && new Date(perfil.trial_ate) > new Date()); }
 function isPro() { return !!(perfil && ((perfil.plano === 'pro' && (!perfil.pro_ate || new Date(perfil.pro_ate) > new Date())) || trialAtivo())); }
 function nomeUsuario() { return (perfil && perfil.nome) || (usuario && usuario.email) || ''; }
