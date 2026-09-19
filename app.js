@@ -384,9 +384,9 @@ function copyToFechamento(games) {
     const freq = {}; flat.forEach(n => freq[n] = (freq[n] || 0) + 1);
     pool = uni.sort((a, b) => (freq[b] - freq[a]) || (a - b)).slice(0, L.fechMax).sort((a, b) => a - b);
   } else pool = uni.sort((a, b) => a - b);
-  selFech.clear();
+  selFech.clear(); selFechFix.clear();
   const cells = $('fechPicker').children;
-  Array.from(cells).forEach(c => c.classList.remove('sel'));
+  Array.from(cells).forEach(c => c.classList.remove('sel', 'fixg'));
   pool.forEach(n => { const idx = NUMS.indexOf(n); if (idx >= 0 && cells[idx]) { selFech.add(n); cells[idx].classList.add('sel'); } });
   fechMsg();
   let aviso;
@@ -457,17 +457,18 @@ function combosIdx(m, k) {
 function maskOf(pos) { let mk = 0; pos.forEach(p => mk |= (1 << p)); return mk; }
 function popcount(x) { let c = 0; while (x) { x &= x - 1; c++; } return c; }
 function binom(n, k) { if (k < 0 || k > n) return 0; k = Math.min(k, n - k); let r = 1; for (let i = 0; i < k; i++) r = r * (n - i) / (i + 1); return Math.round(r); }
-function fechamento(pool, P) {
-  const m = pool.length, gamesPos = combosIdx(m, K), masks = gamesPos.map(maskOf), U = masks.length;
-  if (P >= K) return { games: gamesPos, total: U };
-  const maxDiff = K - P, idxOf = new Map(); masks.forEach((mk, i) => idxOf.set(mk, i));
+// Fechamento genérico: bolão "pool", jogos de tamanho "kSub", garantindo "P" pontos.
+function fecharPool(pool, kSub, P) {
+  const m = pool.length, gamesPos = combosIdx(m, kSub), masks = gamesPos.map(maskOf), U = masks.length;
+  if (P >= kSub) return { games: gamesPos, total: U };
+  const maxDiff = kSub - P, idxOf = new Map(); masks.forEach((mk, i) => idxOf.set(mk, i));
   const cover = new Array(U);
   for (let g = 0; g < U; g++) {
     const inBits = [], outBits = [];
     for (let p = 0; p < m; p++) ((masks[g] >> p) & 1 ? inBits : outBits).push(p);
     const covered = new Set([g]);
     for (let d = 1; d <= maxDiff; d++) {
-      const remC = combosIdx(K, d), addC = combosIdx(outBits.length, d);
+      const remC = combosIdx(kSub, d), addC = combosIdx(outBits.length, d);
       remC.forEach(rc => addC.forEach(ac => { let mk = masks[g]; rc.forEach(r => mk &= ~(1 << inBits[r])); ac.forEach(a => mk |= (1 << outBits[a])); const wi = idxOf.get(mk); if (wi !== undefined) covered.add(wi); }));
     }
     cover[g] = Array.from(covered);
@@ -480,6 +481,21 @@ function fechamento(pool, P) {
     sol.push(bestG);
   }
   return { games: sol.map(g => gamesPos[g]), total: U };
+}
+function fechamento(pool, P) { return fecharPool(pool, K, P); }
+// Fechamento com dezenas fixas: fecha só o pool variável e prende as fixas em todos os jogos.
+function calcularFech(pool, fixas, P) {
+  const fixSet = new Set(fixas), V = pool.filter(n => !fixSet.has(n)), F = fixas.length, kSub = K - F;
+  const pSub = Math.max(0, Math.min(kSub, P - F));
+  const r = fecharPool(V, kSub, pSub);
+  const gamesNums = r.games.map(pos => fixas.concat(pos.map(p => V[p])).sort((a, b) => a - b));
+  const ok = pSub >= kSub ? true : verifyGuarantee(r.games.map(maskOf), combosIdx(V.length, kSub).map(maskOf), pSub);
+  return { gamesNums, ok, F, V, kSub, pSub };
+}
+function fechPesado(mv, kSub, pSub) {
+  if (pSub >= kSub) return binom(mv, kSub) > 3e7;
+  const maxDiff = kSub - pSub; let cov = 0; for (let d = 0; d <= maxDiff; d++) cov += binom(kSub, d) * binom(mv - kSub, d);
+  return binom(mv, kSub) * cov > 3e7;
 }
 function verifyGuarantee(gm, allW, P) {
   for (let i = 0; i < allW.length; i++) { let ok = false; for (let j = 0; j < gm.length; j++) if (popcount(gm[j] & allW[i]) >= P) { ok = true; break; } if (!ok) return false; }
@@ -519,7 +535,7 @@ function runBacktest(weights, topK, range) {
 }
 
 /* ================= Pickers (rebuild por loteria) ================= */
-const selConferir = new Set(), selMeus = new Set(), selFech = new Set(), selEstFix = new Set();
+const selConferir = new Set(), selMeus = new Set(), selFech = new Set(), selEstFix = new Set(), selFechFix = new Set();
 function buildPicker(container, set, maxFn, onChange) {
   container.innerHTML = ''; set.clear();
   container.style.gridTemplateColumns = `repeat(${L.cols},1fr)`;
@@ -537,7 +553,24 @@ function buildPicker(container, set, maxFn, onChange) {
 }
 function conferirMsg() { $('pickMsg').textContent = `${selConferir.size} dezena(s) · escolha de ${L.apostaMin} a ${L.apostaMax}`; }
 function meusMsg() { $('meusPickMsg').textContent = `${selMeus.size} dezena(s) selecionada(s) · ${L.apostaMin} a ${L.apostaMax}`; }
-function fechMsg() { $('fechMsg').textContent = `${selFech.size} dezena(s) · escolha de ${K + 1} a ${L.fechMax}`; }
+function fechMsg() { $('fechMsg').innerHTML = `${selFech.size} dezena(s)${selFechFix.size ? ` · <b style="color:var(--gold);">${selFechFix.size} fixa(s)</b>` : ''} · escolha de ${K + 1} a ${L.fechMax}`; }
+// Picker do fechamento com 3 estados: neutro → bolão (azul) → fixa (dourada, entra em todos os jogos).
+function buildFechPicker() {
+  const box = $('fechPicker'); box.innerHTML = ''; selFech.clear(); selFechFix.clear();
+  box.style.gridTemplateColumns = `repeat(${L.cols},1fr)`;
+  box.style.maxWidth = L.cols > 5 ? '480px' : '320px';
+  NUMS.forEach(n => {
+    const c = document.createElement('div'); c.className = 'pcell'; c.textContent = pad(n);
+    c.addEventListener('click', () => {
+      if (selFechFix.has(n)) { selFechFix.delete(n); selFech.delete(n); c.classList.remove('fixg', 'sel'); }        // fixa → neutro
+      else if (selFech.has(n)) { selFechFix.add(n); c.classList.add('fixg'); c.classList.remove('sel'); }            // bolão → fixa
+      else if (selFech.size < L.fechMax) { selFech.add(n); c.classList.add('sel'); }                                 // neutro → bolão
+      fechMsg();
+    });
+    box.appendChild(c);
+  });
+  fechMsg();
+}
 
 /* ===== Estratégia por grupos (quentes × frias) + dezenas fixas ===== */
 function pickN(arr, n) { const c = arr.slice(), r = []; for (let i = 0; i < n && c.length; i++) r.push(c.splice(Math.floor(Math.random() * c.length), 1)[0]); return r; }
@@ -810,7 +843,7 @@ function buildLottery(key) {
   // pickers
   buildPicker($('picker'), selConferir, () => L.apostaMax, conferirMsg);
   buildPicker($('meusPicker'), selMeus, () => L.apostaMax, meusMsg);
-  buildPicker($('fechPicker'), selFech, () => L.fechMax, fechMsg);
+  buildFechPicker();
   buildFixGrid();
 
   // modo "Grupos": picker de fixas + período; some onde a aposta padrão não é K dezenas (ex.: Lotomania)
@@ -965,36 +998,66 @@ function teaserFechamento(gamesNums) {
     </div>
   </div>`;
 }
+function fechValida() { // valida bolão + fixas; retorna {pool,fixas,F,mv,kSub} ou {erro}
+  if (selFech.size < K + 1) return { erro: `Monte um bolão de ${K + 1} a ${L.fechMax} dezenas (toque uma vez).` };
+  const pool = [...selFech].sort((a, b) => a - b), fixas = [...selFechFix].sort((a, b) => a - b), F = fixas.length;
+  const mv = pool.length - F, kSub = K - F;
+  if (F >= K) return { erro: `Você fixou ${F} dezenas, mas o jogo tem ${K}. Reduza as fixas.` };
+  if (mv < kSub) return { erro: `Faltam dezenas variáveis: com ${F} fixas, o bolão precisa de pelo menos ${F + kSub} dezenas.` };
+  return { pool, fixas, F, mv, kSub };
+}
 $('fechBtn').addEventListener('click', () => {
-  if (selFech.size < K + 1) { $('fechResult').innerHTML = `<div class="note">Selecione de ${K + 1} a ${L.fechMax} dezenas.</div>`; return; }
-  const pool = [...selFech].sort((a, b) => a - b), P = parseInt($('fechGar').value), price = parseFloat($('fechPrice').value) || 0;
-  if (P < K) { const m = pool.length, maxDiff = K - P; let cov = 0; for (let d = 0; d <= maxDiff; d++) cov += binom(K, d) * binom(m - K, d);
-    if (binom(m, K) * cov > 3e7) { $('fechResult').innerHTML = `<div class="note">Esse fechamento é pesado demais para o navegador. Tente um <b>bolão menor</b> ou uma <b>garantia maior</b>.</div>`; return; } }
+  const v = fechValida(); if (v.erro) { $('fechResult').innerHTML = `<div class="note">${v.erro}</div>`; return; }
+  const { pool, fixas, F, mv, kSub } = v, P = parseInt($('fechGar').value), price = parseFloat($('fechPrice').value) || 0;
+  const pSub = Math.max(0, Math.min(kSub, P - F));
+  if (fechPesado(mv, kSub, pSub)) { $('fechResult').innerHTML = `<div class="note">Esse fechamento é pesado demais para o navegador. Tente um <b>bolão menor</b>, mais <b>fixas</b> ou uma <b>garantia maior</b>.</div>`; return; }
   $('fechResult').innerHTML = `<div class="note">Calculando o fechamento…</div>`;
   setTimeout(() => {
-    const r = fechamento(pool, P), gamesNums = r.games.map(pos => pos.map(p => pool[p]).sort((a, b) => a - b));
-    const allW = combosIdx(pool.length, K).map(maskOf), ok = P >= K ? true : verifyGuarantee(r.games.map(maskOf), allW, P);
+    const { gamesNums, ok } = calcularFech(pool, fixas, P);
     const unidade = L.total <= 25 ? 'pontos' : 'acertos';
-    const gar = P >= K ? `Fecha <b>todos</b> os jogos possíveis do bolão.` : `Se as ${K} sorteadas estiverem entre as suas ${pool.length} dezenas, garante pelo menos <b>${P} ${unidade}</b> em algum jogo ${ok ? '✅' : '⚠️'}.`;
+    const cond = F > 0 ? ` e as <b>${F} fixas</b> estiverem entre elas` : '';
+    const gar = P >= K ? `Fecha <b>todos</b> os jogos possíveis do bolão.` : `Se as ${K} sorteadas estiverem no seu bolão de ${pool.length}${cond}, garante pelo menos <b>${P} ${unidade}</b> em algum jogo ${ok ? '✅' : '⚠️'}.`;
+    const fixTxt = F > 0 ? `<div class="result-line"><span class="k">Fixas (em todos)</span><span class="v" style="color:var(--gold);font-weight:700;">${fixas.map(pad).join(' ')}</span></div>` : '';
     const resumo = `<div class="card" style="margin-top:6px;">
-      <div class="bignum"><span class="b">${gamesNums.length}</span><span class="bd">jogos<br>bolão de ${pool.length} dezenas</span></div>
+      <div class="bignum"><span class="b">${gamesNums.length}</span><span class="bd">jogos<br>bolão de ${pool.length}${F ? ` · ${F} fixa(s)` : ''}</span></div>
       <div class="result-line"><span class="k">Garantia</span><span class="v" style="text-align:right;max-width:60%;">${gar}</span></div>
+      ${fixTxt}
       <div class="result-line"><span class="k">Custo estimado</span><span class="v">${brl(gamesNums.length * price)}</span></div>
       <div class="result-line"><span class="k">Bolão</span><span class="v">${pool.map(pad).join(' ')}</span></div></div>`;
-    // Free: mostra o resultado real (nº de jogos, garantia, custo) mas bloqueia os jogos — teaser de conversão
     if (!isPro()) {
       $('fechResult').innerHTML = resumo + teaserFechamento(gamesNums);
       if ($('fechUpgrade')) $('fechUpgrade').addEventListener('click', openConta);
       return;
     }
     const cap = 120, shown = gamesNums.slice(0, cap);
-    let list = shown.map((g, i) => `<div class="game" style="padding:10px 12px;margin-bottom:8px;"><div class="ghead" style="margin-bottom:8px;"><span class="gtitle" style="font-size:13px;">Jogo ${i + 1}</span></div><div class="balls">${g.map(n => ball(n, 'sm')).join('')}</div></div>`).join('');
+    let list = shown.map((g, i) => `<div class="game" style="padding:10px 12px;margin-bottom:8px;"><div class="ghead" style="margin-bottom:8px;"><span class="gtitle" style="font-size:13px;">Jogo ${i + 1}</span></div><div class="balls">${g.map(n => ball(n, selFechFix.has(n) ? 'sm gold' : 'sm')).join('')}</div></div>`).join('');
     if (gamesNums.length > cap) list += `<div class="note">Mostrando os primeiros ${cap} de ${gamesNums.length} jogos.</div>`;
     $('fechResult').innerHTML = resumo;
-    // barra de ações (salvar como carrinho, compartilhar, exportar) logo após o resumo
     $('fechResult').appendChild(exportBar('Fechamento — ' + L.nome, gamesNums, KEY + '-fechamento'));
     const listWrap = document.createElement('div'); listWrap.style.marginTop = '12px'; listWrap.innerHTML = list;
     $('fechResult').appendChild(listWrap);
+  }, 30);
+});
+$('fechTabela').addEventListener('click', () => {
+  const v = fechValida(); if (v.erro) { $('fechResult').innerHTML = `<div class="note">${v.erro}</div>`; return; }
+  const { pool, fixas, F, mv, kSub } = v, price = parseFloat($('fechPrice').value) || 0;
+  $('fechResult').innerHTML = `<div class="note">Calculando a tabela…</div>`;
+  setTimeout(() => {
+    const niveis = [...new Set(L.premios.filter(p => p <= K && p > F).concat(K))].sort((a, b) => a - b);
+    const unidade = L.total <= 25 ? 'pontos' : 'acertos';
+    const td = 'style="padding:7px 8px;border-bottom:1px solid var(--line);text-align:center;"';
+    const tdL = 'style="padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;font-weight:700;"';
+    const rows = niveis.map(P => {
+      const pSub = Math.max(0, Math.min(kSub, P - F));
+      if (fechPesado(mv, kSub, pSub)) return `<tr><td ${tdL}>${P} ${unidade}</td><td ${td}>—</td><td ${td} >muito pesado</td></tr>`;
+      const n = calcularFech(pool, fixas, P).gamesNums.length;
+      return `<tr><td ${tdL}>${P} ${unidade}</td><td ${td}><b>${n}</b></td><td ${td}>${brl(n * price)}</td></tr>`;
+    }).join('');
+    $('fechResult').innerHTML = `<div class="card"><h3 style="margin:2px 0 8px;font-size:14px;">📊 Custo × garantia — bolão de ${pool.length}${F ? ` · ${F} fixa(s)` : ''}</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead><tr><th style="text-align:left;padding:6px 8px;color:var(--muted);">Garantia</th><th style="padding:6px 8px;color:var(--muted);">Jogos</th><th style="padding:6px 8px;color:var(--muted);">Custo</th></tr></thead>
+        <tbody>${rows}</tbody></table>
+      <p class="sub" style="margin-top:10px;">Garantia = pontos mínimos se as ${K} saírem no seu bolão${F ? ' e as fixas saírem' : ''}. Escolha o equilíbrio e toque em <b>Gerar fechamento</b>.</p></div>`;
   }, 30);
 });
 
@@ -1179,7 +1242,7 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
-const APP_VER = 'v40';
+const APP_VER = 'v41';
 function trialAtivo() { return !!(perfil && perfil.trial_ate && new Date(perfil.trial_ate) > new Date()); }
 function isPro() { return !!(perfil && ((perfil.plano === 'pro' && (!perfil.pro_ate || new Date(perfil.pro_ate) > new Date())) || trialAtivo())); }
 function nomeUsuario() { return (perfil && perfil.nome) || (usuario && usuario.email) || ''; }

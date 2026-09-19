@@ -173,6 +173,7 @@
     font-size:15px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-soft);cursor:pointer;font-variant-numeric:tabular-nums;}
   .pcell.sel{background:radial-gradient(circle at 32% 28%,var(--violet-2),var(--violet));color:#fff;border-color:transparent;box-shadow:0 3px 8px rgba(90,50,200,.3);}
   .pcell.fixa{background:radial-gradient(circle at 32% 28%,#4cd07d,var(--green));color:#fff;border-color:transparent;box-shadow:0 3px 8px rgba(20,140,70,.3);}
+  .pcell.fixg{background:radial-gradient(circle at 32% 28%,var(--gold),var(--amber));color:#fff;border-color:transparent;box-shadow:0 3px 8px rgba(200,140,20,.3);}
   .pcell.excl{background:var(--surface-2);color:var(--red);border-color:var(--red);text-decoration:line-through;opacity:.75;}
 
   .result-line{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;}
@@ -525,7 +526,7 @@
     </div><!-- /estMode -->
 
     <div id="fechMode" style="display:none;">
-      <p class="sub">Escolha um bolão de dezenas e gere um conjunto reduzido de jogos com <b>garantia de prêmio mínimo</b> — se as 15 sorteadas estiverem entre as suas dezenas.</p>
+      <p class="sub">Escolha um bolão de dezenas e gere um conjunto reduzido de jogos com <b>garantia de prêmio mínimo</b>. Toque numa dezena para incluí-la no bolão (azul); toque de novo para <b style="color:var(--gold);">fixá-la</b> (dourada, entra em <b>todos</b> os jogos e reduz o custo).</p>
       <div class="picker" id="fechPicker"></div>
       <p class="sub" id="fechMsg" style="text-align:center;"></p>
       <div class="row2">
@@ -537,6 +538,7 @@
         </label>
       </div>
       <button class="btn" id="fechBtn">Gerar fechamento</button>
+      <button class="btn sec" id="fechTabela" style="margin-top:8px;">📊 Comparar custo × garantia</button>
       <div id="fechResult"></div>
       <p class="footer-note" style="margin-top:8px;">O fechamento reduz o custo, mas <b>não aumenta</b> a chance de acertar as 15. Só garante um prêmio menor se você acertar todas as 15 dentro do seu bolão.</p>
     </div><!-- /fechMode -->
