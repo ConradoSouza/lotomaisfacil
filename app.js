@@ -497,6 +497,13 @@ function fechPesado(mv, kSub, pSub) {
   const maxDiff = kSub - pSub; let cov = 0; for (let d = 0; d <= maxDiff; d++) cov += binom(kSub, d) * binom(mv - kSub, d);
   return binom(mv, kSub) * cov > 3e7;
 }
+// #4 — jogo "equilibrado": pares/ímpares perto do meio e soma perto da média do histórico.
+function equilibrado(g) {
+  const pares = g.filter(n => n % 2 === 0).length, soma = g.reduce((a, b) => a + b, 0);
+  const pOk = pares >= Math.floor(K / 2) - 1 && pares <= Math.ceil(K / 2) + 1;
+  const sOk = !somaSd || Math.abs(soma - somaAvg) <= somaSd * 1.2;
+  return pOk && sOk;
+}
 function verifyGuarantee(gm, allW, P) {
   for (let i = 0; i < allW.length; i++) { let ok = false; for (let j = 0; j < gm.length; j++) if (popcount(gm[j] & allW[i]) >= P) { ok = true; break; } if (!ok) return false; }
   return true;
@@ -1013,27 +1020,35 @@ $('fechBtn').addEventListener('click', () => {
   if (fechPesado(mv, kSub, pSub)) { $('fechResult').innerHTML = `<div class="note">Esse fechamento é pesado demais para o navegador. Tente um <b>bolão menor</b>, mais <b>fixas</b> ou uma <b>garantia maior</b>.</div>`; return; }
   $('fechResult').innerHTML = `<div class="note">Calculando o fechamento…</div>`;
   setTimeout(() => {
-    const { gamesNums, ok } = calcularFech(pool, fixas, P);
+    const calc = calcularFech(pool, fixas, P);
+    let jogos = calc.gamesNums; const okBase = calc.ok;
     const unidade = L.total <= 25 ? 'pontos' : 'acertos';
+    // #4 — filtro de equilíbrio (abre mão da garantia)
+    let enxugado = false, aviso4 = '';
+    if ($('fechEquil') && $('fechEquil').checked) {
+      const antes = jogos.length, filt = jogos.filter(equilibrado);
+      if (filt.length && filt.length < antes) { jogos = filt; enxugado = true; aviso4 = `<div class="note" style="border-color:var(--amber);color:var(--amber);margin-top:8px;">✂️ Enxugado: <b>${antes} → ${jogos.length}</b> jogos equilibrados. Ao remover jogos, a garantia mínima <b>deixa de valer</b> — é uma seleção mais barata, não um fechamento garantido.</div>`; }
+    }
     const cond = F > 0 ? ` e as <b>${F} fixas</b> estiverem entre elas` : '';
-    const gar = P >= K ? `Fecha <b>todos</b> os jogos possíveis do bolão.` : `Se as ${K} sorteadas estiverem no seu bolão de ${pool.length}${cond}, garante pelo menos <b>${P} ${unidade}</b> em algum jogo ${ok ? '✅' : '⚠️'}.`;
+    const gar = enxugado ? `Seleção equilibrada de <b>${jogos.length}</b> jogos do bolão — <b>sem</b> garantia mínima.`
+      : (P >= K ? `Fecha <b>todos</b> os jogos possíveis do bolão.` : `Se as ${K} sorteadas estiverem no seu bolão de ${pool.length}${cond}, garante pelo menos <b>${P} ${unidade}</b> em algum jogo ${okBase ? '✅' : '⚠️'}.`);
     const fixTxt = F > 0 ? `<div class="result-line"><span class="k">Fixas (em todos)</span><span class="v" style="color:var(--gold);font-weight:700;">${fixas.map(pad).join(' ')}</span></div>` : '';
     const resumo = `<div class="card" style="margin-top:6px;">
-      <div class="bignum"><span class="b">${gamesNums.length}</span><span class="bd">jogos<br>bolão de ${pool.length}${F ? ` · ${F} fixa(s)` : ''}</span></div>
+      <div class="bignum"><span class="b">${jogos.length}</span><span class="bd">jogos<br>bolão de ${pool.length}${F ? ` · ${F} fixa(s)` : ''}</span></div>
       <div class="result-line"><span class="k">Garantia</span><span class="v" style="text-align:right;max-width:60%;">${gar}</span></div>
       ${fixTxt}
-      <div class="result-line"><span class="k">Custo estimado</span><span class="v">${brl(gamesNums.length * price)}</span></div>
-      <div class="result-line"><span class="k">Bolão</span><span class="v">${pool.map(pad).join(' ')}</span></div></div>`;
+      <div class="result-line"><span class="k">Custo estimado</span><span class="v">${brl(jogos.length * price)}</span></div>
+      <div class="result-line"><span class="k">Bolão</span><span class="v">${pool.map(pad).join(' ')}</span></div></div>${aviso4}`;
     if (!isPro()) {
-      $('fechResult').innerHTML = resumo + teaserFechamento(gamesNums);
+      $('fechResult').innerHTML = resumo + teaserFechamento(jogos);
       if ($('fechUpgrade')) $('fechUpgrade').addEventListener('click', openConta);
       return;
     }
-    const cap = 120, shown = gamesNums.slice(0, cap);
+    const cap = 120, shown = jogos.slice(0, cap);
     let list = shown.map((g, i) => `<div class="game" style="padding:10px 12px;margin-bottom:8px;"><div class="ghead" style="margin-bottom:8px;"><span class="gtitle" style="font-size:13px;">Jogo ${i + 1}</span></div><div class="balls">${g.map(n => ball(n, selFechFix.has(n) ? 'sm gold' : 'sm')).join('')}</div></div>`).join('');
-    if (gamesNums.length > cap) list += `<div class="note">Mostrando os primeiros ${cap} de ${gamesNums.length} jogos.</div>`;
+    if (jogos.length > cap) list += `<div class="note">Mostrando os primeiros ${cap} de ${jogos.length} jogos.</div>`;
     $('fechResult').innerHTML = resumo;
-    $('fechResult').appendChild(exportBar('Fechamento — ' + L.nome, gamesNums, KEY + '-fechamento'));
+    $('fechResult').appendChild(exportBar('Fechamento — ' + L.nome, jogos, KEY + '-fechamento'));
     const listWrap = document.createElement('div'); listWrap.style.marginTop = '12px'; listWrap.innerHTML = list;
     $('fechResult').appendChild(listWrap);
   }, 30);
@@ -1058,6 +1073,33 @@ $('fechTabela').addEventListener('click', () => {
         <thead><tr><th style="text-align:left;padding:6px 8px;color:var(--muted);">Garantia</th><th style="padding:6px 8px;color:var(--muted);">Jogos</th><th style="padding:6px 8px;color:var(--muted);">Custo</th></tr></thead>
         <tbody>${rows}</tbody></table>
       <p class="sub" style="margin-top:10px;">Garantia = pontos mínimos se as ${K} saírem no seu bolão${F ? ' e as fixas saírem' : ''}. Escolha o equilíbrio e toque em <b>Gerar fechamento</b>.</p></div>`;
+  }, 30);
+});
+$('fechOrcaBtn').addEventListener('click', () => {
+  const v = fechValida(); if (v.erro) { $('fechResult').innerHTML = `<div class="note">${v.erro}</div>`; return; }
+  const orca = parseFloat($('fechOrca').value) || 0, price = parseFloat($('fechPrice').value) || 0;
+  if (orca <= 0) { $('fechResult').innerHTML = `<div class="note">Digite um orçamento (R$) maior que zero.</div>`; return; }
+  if (price <= 0) { $('fechResult').innerHTML = `<div class="note">Defina o preço por jogo primeiro.</div>`; return; }
+  const { pool, fixas, F, mv, kSub } = v, unidade = L.total <= 25 ? 'pontos' : 'acertos', maxJogos = Math.floor(orca / price);
+  $('fechResult').innerHTML = `<div class="note">Procurando o melhor fechamento no orçamento…</div>`;
+  setTimeout(() => {
+    const niveis = [...new Set(L.premios.filter(p => p <= K && p > F).concat(K))].sort((a, b) => b - a); // maior garantia primeiro
+    let escolha = null;
+    for (const P of niveis) {
+      const pSub = Math.max(0, Math.min(kSub, P - F));
+      if (fechPesado(mv, kSub, pSub)) continue;
+      const n = calcularFech(pool, fixas, P).gamesNums.length;
+      if (n <= maxJogos) { escolha = { P, n }; break; }
+    }
+    if (!escolha) {
+      const menor = niveis[niveis.length - 1], pSubm = Math.max(0, Math.min(kSub, menor - F));
+      const nMin = fechPesado(mv, kSub, pSubm) ? null : calcularFech(pool, fixas, menor).gamesNums.length;
+      $('fechResult').innerHTML = `<div class="note">Com <b>${brl(orca)}</b> (até ${maxJogos} jogos) não dá pra fechar esse bolão${nMin ? ` — a menor garantia (${menor} ${unidade}) já custa ${brl(nMin * price)} (${nMin} jogos)` : ''}. Aumente o orçamento, reduza o bolão ou fixe mais dezenas.</div>`;
+      return;
+    }
+    $('fechGar').value = escolha.P;
+    $('fechResult').innerHTML = `<div class="note">💰 Com <b>${brl(orca)}</b> dá pra garantir <b>${escolha.P} ${unidade}</b> (${escolha.n} jogos · ${brl(escolha.n * price)}). Gerando…</div>`;
+    setTimeout(() => $('fechBtn').click(), 200);
   }, 30);
 });
 
@@ -1242,7 +1284,7 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
-const APP_VER = 'v41';
+const APP_VER = 'v42';
 function trialAtivo() { return !!(perfil && perfil.trial_ate && new Date(perfil.trial_ate) > new Date()); }
 function isPro() { return !!(perfil && ((perfil.plano === 'pro' && (!perfil.pro_ate || new Date(perfil.pro_ate) > new Date())) || trialAtivo())); }
 function nomeUsuario() { return (perfil && perfil.nome) || (usuario && usuario.email) || ''; }

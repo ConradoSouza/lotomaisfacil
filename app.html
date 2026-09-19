@@ -537,7 +537,19 @@
           <input type="number" id="fechPrice" value="3.00" step="0.50" min="0">
         </label>
       </div>
-      <button class="btn" id="fechBtn">Gerar fechamento</button>
+      <div style="display:flex;gap:8px;align-items:flex-end;">
+        <label class="field" style="flex:1;margin-top:0;">💰 Ou defina um orçamento (R$)
+          <input type="number" id="fechOrca" placeholder="ex.: 50" step="1" min="0">
+        </label>
+        <button class="btn sec" id="fechOrcaBtn" style="width:auto;padding:11px 14px;white-space:nowrap;">Melhor no orçamento</button>
+      </div>
+      <div class="card" style="margin-top:12px;">
+        <div class="toggle-row">
+          <div><div class="tl">✂️ Só jogos equilibrados</div><div class="td">descarta jogos muito desbalanceados — mais barato, mas <b>abre mão da garantia</b> mínima</div></div>
+          <label class="sw"><input type="checkbox" id="fechEquil"><span class="track"></span></label>
+        </div>
+      </div>
+      <button class="btn" id="fechBtn" style="margin-top:12px;">Gerar fechamento</button>
       <button class="btn sec" id="fechTabela" style="margin-top:8px;">📊 Comparar custo × garantia</button>
       <div id="fechResult"></div>
       <p class="footer-note" style="margin-top:8px;">O fechamento reduz o custo, mas <b>não aumenta</b> a chance de acertar as 15. Só garante um prêmio menor se você acertar todas as 15 dentro do seu bolão.</p>
