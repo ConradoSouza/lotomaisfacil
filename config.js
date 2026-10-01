@@ -9,6 +9,6 @@ window.LOTO_CFG = {
   VAPID_PUBLIC: 'BJLAG4t5oDesGdQLjjDLPaMrpWNHCcQcrQ1ZZFBtoZcWOPyrceL5eXsUNG4k0mV51UAveNPt-AHebZosnB9bu3A',
   // Google AdSense (anúncios só para usuários grátis). Enquanto vazio, NENHUM anúncio aparece.
   // Após aprovar o site no AdSense: ADSENSE_CLIENT = 'ca-pub-XXXX'; ADSENSE_SLOT = 'id do bloco de anúncio'.
-  ADSENSE_CLIENT: '',
-  ADSENSE_SLOT: ''
+  ADSENSE_CLIENT: 'ca-pub-4808906929541275',
+  ADSENSE_SLOT: '8763111050'
 };
