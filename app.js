@@ -1305,10 +1305,32 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
-const APP_VER = 'v44';
+const APP_VER = 'v45';
 const ADMIN_EMAIL = 'kalebsolucoes@gmail.com';
 // Métrica simples e anônima (contador por tipo de evento). Nunca guarda quem foi.
 function registrar(tipo) { try { if (SB) SB.rpc('registrar_evento', { p_tipo: tipo }); } catch (e) {} }
+
+// Anúncios (AdSense) — só para usuário grátis; some para o Pro. Sem IDs no config, nada aparece.
+const ADSENSE_CLIENT = (window.LOTO_CFG && window.LOTO_CFG.ADSENSE_CLIENT) || '';
+const ADSENSE_SLOT = (window.LOTO_CFG && window.LOTO_CFG.ADSENSE_SLOT) || '';
+let adsScriptCarregado = false;
+function anunciosAtivos() { return !!(ADSENSE_CLIENT && ADSENSE_SLOT && !isPro()); }
+function initAnuncios() {
+  const box = $('adPainel'); if (!box) return;
+  if (!anunciosAtivos()) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  if (!adsScriptCarregado) {
+    const s = document.createElement('script');
+    s.async = true; s.setAttribute('crossorigin', 'anonymous');
+    s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + ADSENSE_CLIENT;
+    document.head.appendChild(s);
+    adsScriptCarregado = true;
+  }
+  if (!box.querySelector('.adsbygoogle')) {
+    box.innerHTML = `<div class="sub" style="font-size:11px;color:var(--muted);margin-bottom:4px;">publicidade</div><ins class="adsbygoogle" style="display:block" data-ad-client="${ADSENSE_CLIENT}" data-ad-slot="${ADSENSE_SLOT}" data-ad-format="auto" data-full-width-responsive="true"></ins>`;
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+  }
+}
 function trialAtivo() { return !!(perfil && perfil.trial_ate && new Date(perfil.trial_ate) > new Date()); }
 function isPro() { return !!(perfil && ((perfil.plano === 'pro' && (!perfil.pro_ate || new Date(perfil.pro_ate) > new Date())) || trialAtivo())); }
 function nomeUsuario() { return (perfil && perfil.nome) || (usuario && usuario.email) || ''; }
@@ -1339,7 +1361,7 @@ function renderContaBody() {
     const emTrial = trialAtivo();
     const trialDisponivel = !!(perfil && !perfil.trial_ate);
     const diasTrial = emTrial ? Math.max(1, Math.ceil((new Date(perfil.trial_ate) - Date.now()) / 86400000)) : 0;
-    const benef = `No <b>Pro</b> você libera: fechamentos, gerar muitos jogos de uma vez e sincronizar seus jogos na nuvem.`;
+    const benef = `No <b>Pro</b> você libera: fechamentos, gerar muitos jogos de uma vez, sincronizar na nuvem e <b>navegar sem anúncios</b>.`;
     let meio;
     if (pro && emTrial) meio = `<div class="note" style="margin-top:6px;border-color:var(--gold);">🎁 <b>Teste Pro ativo</b> — termina em ${diasTrial} dia(s). Para continuar depois, assine o Pro.</div><button class="btn" id="btnUpgrade" style="margin-top:12px;">⭐ Assinar Pro</button>`;
     else if (pro) meio = '';
@@ -1470,6 +1492,7 @@ function aplicarGating() {
   if (gc) { gc.max = pro ? 20 : 3; if (!pro && (parseInt(gc.value) || 1) > 3) gc.value = 3; }
   const ft = $('gerToggle') && $('gerToggle').querySelector('[data-mode="fechamento"]');
   if (ft && typeof L !== 'undefined') ft.textContent = (!pro && L.fechamento !== false) ? 'Fechamento 🔒' : 'Fechamento';
+  if (typeof initAnuncios === 'function') initAnuncios();
 }
 
 /* --------- Push (avisos de resultado) — opt-in --------- */
