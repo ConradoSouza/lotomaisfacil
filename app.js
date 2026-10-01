@@ -1305,7 +1305,10 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
-const APP_VER = 'v43';
+const APP_VER = 'v44';
+const ADMIN_EMAIL = 'kalebsolucoes@gmail.com';
+// Métrica simples e anônima (contador por tipo de evento). Nunca guarda quem foi.
+function registrar(tipo) { try { if (SB) SB.rpc('registrar_evento', { p_tipo: tipo }); } catch (e) {} }
 function trialAtivo() { return !!(perfil && perfil.trial_ate && new Date(perfil.trial_ate) > new Date()); }
 function isPro() { return !!(perfil && ((perfil.plano === 'pro' && (!perfil.pro_ate || new Date(perfil.pro_ate) > new Date())) || trialAtivo())); }
 function nomeUsuario() { return (perfil && perfil.nome) || (usuario && usuario.email) || ''; }
@@ -1350,8 +1353,10 @@ function renderContaBody() {
       </div>
       ${meio}
       ${refSectionHTML()}
-      <button class="btn sec" id="btnSair" style="margin-top:14px;">Sair</button>`;
+      ${usuario.email === ADMIN_EMAIL ? '<button class="btn sec" id="btnMetricas" style="margin-top:14px;">📊 Métricas (admin)</button>' : ''}
+      <button class="btn sec" id="btnSair" style="margin-top:${usuario.email === ADMIN_EMAIL ? '10' : '14'}px;">Sair</button>`;
     $('btnSair').addEventListener('click', sair);
+    if ($('btnMetricas')) $('btnMetricas').addEventListener('click', verMetricas);
     if ($('btnUpgrade')) $('btnUpgrade').addEventListener('click', assinarPro);
     if ($('btnTrial')) $('btnTrial').addEventListener('click', ativarTrial);
     if ($('refCopy')) $('refCopy').addEventListener('click', () => { const i = $('refLink'); i.select(); if (navigator.clipboard) navigator.clipboard.writeText(i.value).then(() => { $('refCopy').textContent = '✓'; setTimeout(() => $('refCopy').textContent = 'Copiar', 1500); }).catch(() => {}); });
@@ -1375,6 +1380,22 @@ function renderContaBody() {
   }
   if (pushSuportado()) { body.insertAdjacentHTML('beforeend', pushSectionHTML()); wirePush(); }
 }
+async function verMetricas() {
+  const body = $('contaBody'); if (!body) return;
+  body.innerHTML = `<div class="note">Carregando métricas…</div>`;
+  let dados = [];
+  try { const { data, error } = await SB.rpc('ler_metricas'); if (!error && data) dados = data; } catch (e) {}
+  const rotulos = { landing_view: 'Visitas na landing', app_open: 'Aberturas do app', signup: 'Cadastros', trial: 'Testes Pro ativados', pro: 'Pagamentos Pro', push_on: 'Avisos ativados' };
+  const td = 'style="padding:7px 8px;border-bottom:1px solid var(--line);"', tdc = 'style="padding:7px 8px;border-bottom:1px solid var(--line);text-align:center;"';
+  const rows = dados.length ? dados.map(d => `<tr><td ${td}>${rotulos[d.tipo] || d.tipo}</td><td ${tdc}><b>${d.total}</b></td><td ${tdc}>${d.hoje}</td></tr>`).join('')
+    : `<tr><td colspan="3" ${td} style="color:var(--muted);">Ainda sem dados (confira se rodou o supabase-metricas.sql e o supabase-admin.sql).</td></tr>`;
+  body.innerHTML = `<h2 style="margin:4px 0 2px;">📊 Métricas</h2><p class="sub" style="margin:0 0 12px;">Últimos 30 dias · sem dados pessoais.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <thead><tr><th style="text-align:left;padding:6px 8px;color:var(--muted);">Evento</th><th style="padding:6px 8px;color:var(--muted);">30 dias</th><th style="padding:6px 8px;color:var(--muted);">Hoje</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+    <button class="btn sec" id="metBack" style="margin-top:16px;">← Voltar</button>`;
+  $('metBack').addEventListener('click', renderContaBody);
+}
 async function submitAuth() {
   const email = ($('acEmail').value || '').trim(), senha = $('acSenha').value, erro = $('acErro');
   erro.style.display = 'none';
@@ -1384,6 +1405,7 @@ async function submitAuth() {
     if (modoCadastro) {
       const { data, error } = await SB.auth.signUp({ email, password: senha, options: { data: { nome: ($('acNome').value || '').trim() } } });
       if (error) throw error;
+      registrar('signup');
       if (!data.session) { erro.style.color = 'var(--ink-soft)'; erro.style.borderColor = 'var(--line)'; erro.textContent = 'Conta criada! Confirme pelo email e depois entre.'; erro.style.display = ''; btn.disabled = false; btn.textContent = txt; return; }
     } else {
       const { error } = await SB.auth.signInWithPassword({ email, password: senha });
@@ -1399,7 +1421,7 @@ async function ativarTrial() {
   try {
     const { data, error } = await SB.rpc('ativar_trial'); // função segura no banco (só o próprio trial_ate, 1× só)
     if (error) throw error;
-    perfil.trial_ate = data || perfil.trial_ate;
+    perfil.trial_ate = data || perfil.trial_ate; registrar('trial');
     renderContaBody();
     if (typeof aplicarGating === 'function') aplicarGating();
     if (typeof puxarJogosNuvem === 'function') puxarJogosNuvem();
@@ -1430,7 +1452,7 @@ async function checarRetornoPagamento() {
   if (pro === 'ok') {
     for (let i = 0; i < 8 && !isPro(); i++) { await carregarPerfil(); if (isPro()) break; await new Promise(r => setTimeout(r, 2000)); }
     atualizarContaBtn(); aplicarGating();
-    if (isPro()) { await puxarJogosNuvem(); renderMeus(); alert('🎉 Pagamento confirmado! Seu Pro está ativo.'); }
+    if (isPro()) { registrar('pro'); await puxarJogosNuvem(); renderMeus(); alert('🎉 Pagamento confirmado! Seu Pro está ativo.'); }
     else alert('Recebemos seu pagamento — pode levar alguns instantes para liberar o Pro. Recarregue em breve.');
   } else if (pro === 'falhou') alert('O pagamento não foi concluído. Tente novamente quando quiser.');
 }
@@ -1511,6 +1533,7 @@ async function ativarPush() {
     const j = sub.toJSON();
     const { error } = await SB.rpc('salvar_push', { p_endpoint: sub.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
     if (error) return 'banco: ' + (error.message || error.code || 'erro');
+    registrar('push_on');
     return 'ok';
   } catch (e) { return 'banco: ' + (e.message || 'exceção'); }
 }
@@ -1695,6 +1718,7 @@ async function carregarQuaisHoje() {
   carregarQuaisHoje();
   initAuth();
   setTimeout(sincronizarPush, 3000); // regrava a inscrição de push no banco, se houver
+  try { const k = 'lotomais-ev-' + new Date().toISOString().slice(0, 10); if (!localStorage.getItem(k)) { setTimeout(() => registrar('app_open'), 1500); localStorage.setItem(k, '1'); } } catch (e) {}
 })();
 
 if ('serviceWorker' in navigator) {

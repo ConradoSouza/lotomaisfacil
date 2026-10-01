@@ -255,7 +255,12 @@
     <p class="disc">
       <span class="plus18">🔞 +18</span> — Jogue com responsabilidade. As loterias são jogos de azar e nenhum método garante prêmios; o Loto+Facil é uma ferramenta de <b>análise estatística e organização de jogos</b>, sem qualquer influência sobre os sorteios. App independente, <b>não é afiliado nem endossado pela Caixa Econômica Federal</b>.
     </p>
-    <div style="margin-top:8px;">© <span id="yr"></span> Loto+Facil · <a href="app.html" style="color:var(--violet);font-weight:700;">Abrir o app</a></div>
+    <div style="margin-top:10px;">
+      <a href="termos.html" style="color:var(--violet);font-weight:700;">Termos de Uso</a> ·
+      <a href="privacidade.html" style="color:var(--violet);font-weight:700;">Privacidade</a> ·
+      <a href="app.html" style="color:var(--violet);font-weight:700;">Abrir o app</a>
+    </div>
+    <div style="margin-top:8px;">© <span id="yr"></span> Loto+Facil · contato: <a href="mailto:kalebsolucoes@gmail.com" style="color:var(--muted);">kalebsolucoes@gmail.com</a></div>
   </div>
 </footer>
 
@@ -286,6 +291,21 @@
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
   }
+
+  // Métrica anônima: visita na landing (1x por dia por aparelho). Sem dados pessoais.
+  (function(){
+    try {
+      var k = 'lotomais-lv-' + new Date().toISOString().slice(0,10);
+      if (localStorage.getItem(k)) return;
+      localStorage.setItem(k, '1');
+      var ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbW5wYm5qY25raWRheXhiYXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NDYzMTMsImV4cCI6MjEwMTQyMjMxM30.6GzkdoesdrpiV3Dj5e9XJv_0jfZNrVRk3H2aGJMoEb4';
+      fetch('https://ycmnpbnjcnkidayxbaqe.supabase.co/rest/v1/rpc/registrar_evento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': ANON, 'Authorization': 'Bearer ' + ANON },
+        body: JSON.stringify({ p_tipo: 'landing_view' })
+      }).catch(function(){});
+    } catch(e){}
+  })();
 </script>
 </body>
 </html>
