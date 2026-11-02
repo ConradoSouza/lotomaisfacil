@@ -434,6 +434,7 @@ function exportBar(title, games, baseName, fechavel) {
     form.append(inp, ok); bar.appendChild(form); inp.focus();
   });
   bar.append(
+    mk('📲 Modo apostar', () => abrirModoApostar(games, title)),
     mk('📱 WhatsApp', () => shareWhatsApp(title, games)),
     mk('⬇ Baixar CSV', () => downloadCSV(baseName + '.csv', gamesToCSV(games))),
     mk('🖨 PDF / Imprimir', () => printGames(title, games)),
@@ -441,6 +442,47 @@ function exportBar(title, games, baseName, fechavel) {
   );
   return bar;
 }
+/* ================= Modo apostar (um jogo por vez) ================= */
+let apostarJogos = [], apostarIdx = 0, apostarFeitos = new Set(), apostarKey = '';
+function abrirModoApostar(games, titulo) {
+  if (!games || !games.length) return;
+  apostarJogos = games.map(g => g.slice().sort((a, b) => a - b));
+  apostarKey = 'lotomais-apostar-' + hashStr(KEY + '|' + apostarJogos.map(g => g.join('-')).join('|'));
+  apostarFeitos = new Set();
+  try { JSON.parse(localStorage.getItem(apostarKey) || '[]').forEach(i => apostarFeitos.add(i)); } catch (e) {}
+  apostarIdx = apostarJogos.findIndex((_, i) => !apostarFeitos.has(i)); if (apostarIdx < 0) apostarIdx = 0;
+  $('apostarTitulo').textContent = '📲 ' + (titulo || 'Modo apostar');
+  renderApostar();
+  $('apostarModal').style.display = 'flex'; document.body.style.overflow = 'hidden';
+}
+function salvarApostarFeitos() { try { localStorage.setItem(apostarKey, JSON.stringify([...apostarFeitos])); } catch (e) {} }
+function renderApostar() {
+  const body = $('apostarBody'); if (!body) return;
+  const N = apostarJogos.length, g = apostarJogos[apostarIdx], feito = apostarFeitos.has(apostarIdx), feitos = apostarFeitos.size, set = new Set(g);
+  const grid = NUMS.map(n => `<div class="pcell${set.has(n) ? ' sel' : ''}" style="cursor:default;pointer-events:none;">${pad(n)}</div>`).join('');
+  body.innerHTML = `
+    <div style="text-align:center;margin:8px 0 2px;">
+      <div style="font-weight:800;font-size:18px;">Jogo ${apostarIdx + 1} <span style="color:var(--muted);font-weight:600;">de ${N}</span> ${feito ? '<span style="color:var(--green);">✓</span>' : ''}</div>
+      <div class="sub" style="margin-top:2px;">${feitos} de ${N} já apostados</div>
+    </div>
+    <div class="picker" style="grid-template-columns:repeat(${L.cols},1fr);max-width:${L.cols > 5 ? '380' : '300'}px;margin:14px auto 10px;">${grid}</div>
+    <div style="text-align:center;font-weight:800;letter-spacing:1px;font-size:16px;margin-bottom:4px;">${g.map(pad).join('  ')}</div>
+    <div class="sub" style="text-align:center;margin-bottom:16px;">Marque estas dezenas no app da Caixa e confirme a aposta.</div>
+    <button class="btn" id="apFeito"${feito ? ' style="background:var(--surface-2);color:var(--ink-soft);"' : ''}>${feito ? '↩ Desmarcar' : '✓ Já apostei este'}</button>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn sec" id="apPrev" style="flex:1;"${apostarIdx === 0 ? ' disabled' : ''}>⬅ Anterior</button>
+      <button class="btn sec" id="apNext" style="flex:1;"${apostarIdx === N - 1 ? ' disabled' : ''}>Próximo ➡</button>
+    </div>
+    ${feitos === N ? '<div class="note" style="margin-top:14px;border-color:var(--green);color:var(--green);text-align:center;">🎉 Todos os jogos apostados! Boa sorte!</div>' : ''}`;
+  $('apFeito').addEventListener('click', () => {
+    if (apostarFeitos.has(apostarIdx)) apostarFeitos.delete(apostarIdx);
+    else { apostarFeitos.add(apostarIdx); if (apostarIdx < N - 1) apostarIdx++; }
+    salvarApostarFeitos(); renderApostar();
+  });
+  $('apPrev').addEventListener('click', () => { if (apostarIdx > 0) { apostarIdx--; renderApostar(); } });
+  $('apNext').addEventListener('click', () => { if (apostarIdx < N - 1) { apostarIdx++; renderApostar(); } });
+}
+function fecharApostar() { $('apostarModal').style.display = 'none'; document.body.style.overflow = ''; }
 
 /* ================= Fechamento ================= */
 function combosIdx(m, k) {
@@ -769,7 +811,7 @@ function renderMeus() {
       <div class="ghead"><span class="gtitle">${titulo} · ${g.jogos.length} jogo(s) · ${dt}${alvoTxt}</span><span style="display:flex;gap:6px;"><button class="chip" data-rename="${g.gid}" type="button" style="padding:4px 10px;" title="Renomear carrinho">✏️</button><button class="chip" data-wac="${g.gid}" type="button" style="padding:4px 10px;" title="Compartilhar no WhatsApp">📱</button><button class="chip" data-delc="${g.gid}" type="button" style="padding:4px 11px;" title="Excluir carrinho">✕</button></span></div>
       ${lotLabel}${jogosHtml}
       <div class="gmeta"><span class="tagm" style="${g.winLast ? 'background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);border-color:transparent;' : ''}">#${g.ctx.last[0]}: melhor <b>${g.bestLast}</b>${g.winLast ? ' 🏆' : ''}</span><span class="tagm">histórico: melhor <b>${g.bestHist}</b> · premiou <b>${g.winsHist}×</b></span></div>
-      ${fechCapable ? `<div style="margin-top:10px;"><button class="chip" data-fech="${g.gid}" type="button" title="Enviar ${multi ? 'os jogos marcados' : 'este jogo'} para montar um fechamento">🎯 Montar fechamento${multi ? ' (marcados)' : ''}</button></div>` : ''}
+      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;"><button class="chip" data-apostar="${g.gid}" type="button" title="Apostar um jogo por vez">📲 Modo apostar</button>${fechCapable ? `<button class="chip" data-fech="${g.gid}" type="button" title="Enviar ${multi ? 'os jogos marcados' : 'este jogo'} para montar um fechamento">🎯 Montar fechamento${multi ? ' (marcados)' : ''}</button>` : ''}</div>
     </div>`;
   }).join('');
   $('meusList').querySelectorAll('[data-delc]').forEach(b => b.addEventListener('click', () => { const p = b.dataset.delc.split('|'); deleteCart(p[0], p[1]); }));
@@ -791,6 +833,11 @@ function renderMeus() {
     if (g.k !== KEY) { $('lotSel').value = g.k; buildLottery(g.k); try { localStorage.setItem('lotomais-loteria', g.k); } catch (e) {} } // fechamento é da loteria atual
     const tb = $('tabbar').querySelector('[data-tab="gerar"]'); if (tb) tb.click();
     copyToFechamento(escolhidos);
+  }));
+  $('meusList').querySelectorAll('[data-apostar]').forEach(b => b.addEventListener('click', () => {
+    const g = gmap[b.dataset.apostar]; if (!g) return;
+    if (g.k !== KEY) { $('lotSel').value = g.k; buildLottery(g.k); try { localStorage.setItem('lotomais-loteria', g.k); } catch (e) {} } // o grid usa a loteria atual
+    abrirModoApostar(g.jogos.map(j => j.nums.slice()), g.nome || 'Apostar');
   }));
 }
 // Backup: exportar/importar todas as apostas
@@ -1290,6 +1337,8 @@ function closeAbout() { $('aboutModal').style.display = 'none'; document.body.st
 $('aboutBtn').addEventListener('click', openAbout);
 $('aboutClose').addEventListener('click', closeAbout);
 $('aboutModal').addEventListener('click', e => { if (e.target === $('aboutModal')) closeAbout(); });
+$('apostarClose').addEventListener('click', fecharApostar);
+$('apostarModal').addEventListener('click', e => { if (e.target === $('apostarModal')) fecharApostar(); });
 $('installBtn2').addEventListener('click', () => { if (deferredPrompt) doInstall(); else $('iosHint').style.display = ''; });
 $('shareApp').addEventListener('click', () => window.open('https://wa.me/?text=' + encodeURIComponent('🍀 Loto+Facil — análise e gerador de jogos das loterias da Caixa:\n' + APP_URL), '_blank'));
 $('copyLink').addEventListener('click', e => { if (navigator.clipboard) navigator.clipboard.writeText(APP_URL).then(() => { e.target.textContent = '✓ Copiado'; setTimeout(() => e.target.textContent = '🔗 Copiar link', 1500); }).catch(() => {}); });
@@ -1305,7 +1354,7 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
-const APP_VER = 'v45';
+const APP_VER = 'v47';
 const ADMIN_EMAIL = 'kalebsolucoes@gmail.com';
 // Métrica simples e anônima (contador por tipo de evento). Nunca guarda quem foi.
 function registrar(tipo) { try { if (SB) SB.rpc('registrar_evento', { p_tipo: tipo }); } catch (e) {} }
