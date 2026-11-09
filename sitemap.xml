@@ -1,23 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://lotomaisfacil.pages.dev/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://lotomaisfacil.pages.dev/app.html</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://lotomaisfacil.pages.dev/termos.html</loc>
-    <changefreq>yearly</changefreq>
-    <priority>0.3</priority>
-  </url>
-  <url>
-    <loc>https://lotomaisfacil.pages.dev/privacidade.html</loc>
-    <changefreq>yearly</changefreq>
-    <priority>0.3</priority>
-  </url>
+  <url><loc>https://lotomaisfacil.pages.dev/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://lotomaisfacil.pages.dev/app.html</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://lotomaisfacil.pages.dev/guias/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://lotomaisfacil.pages.dev/guias/fechamento-de-loteria.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lotomaisfacil.pages.dev/guias/dezenas-quentes-frias-atrasadas.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lotomaisfacil.pages.dev/guias/como-jogar-lotofacil.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lotomaisfacil.pages.dev/guias/como-jogar-mega-sena.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lotomaisfacil.pages.dev/guias/estrategias-e-mitos.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lotomaisfacil.pages.dev/guias/jogo-responsavel.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lotomaisfacil.pages.dev/termos.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://lotomaisfacil.pages.dev/privacidade.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>
