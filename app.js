@@ -5,11 +5,11 @@
 /* ================= Configuração das loterias ================= */
 const LOTERIAS = {
   lotofacil: { nome: 'Lotofácil', total: 25, sorteados: 15, apostaMin: 15, apostaMax: 20, premios: [15, 14, 13, 12, 11], cols: 6, fechMax: 20, cor: '#6d3bef', cor2: '#9a6cff' },
-  megasena: { nome: 'Mega-Sena', total: 60, sorteados: 6, apostaMin: 6, apostaMax: 15, premios: [6, 5, 4], cols: 10, fechMax: 14, cor: '#1f9d57', cor2: '#4cc98a' },
-  quina: { nome: 'Quina', total: 80, sorteados: 5, apostaMin: 5, apostaMax: 15, premios: [5, 4, 3, 2], cols: 10, fechMax: 12, cor: '#6a3ad1', cor2: '#9a6cff' },
-  lotomania: { nome: 'Lotomania', total: 100, min: 0, sorteados: 20, apostaMin: 50, apostaMax: 50, premios: [20, 19, 18, 17, 16, 15, 0], cols: 10, fechamento: false, cor: '#f07c00', cor2: '#ff9e33' },
-  duplasena: { nome: 'Dupla Sena', total: 50, sorteados: 6, apostaMin: 6, apostaMax: 15, premios: [6, 5, 4, 3], cols: 10, fechMax: 14, cor: '#b3123a', cor2: '#e04e6e' },
-  diadesorte: { nome: 'Dia de Sorte', total: 31, sorteados: 7, apostaMin: 7, apostaMax: 15, premios: [7, 6, 5, 4], cols: 8, fechMax: 14, mes: true, cor: '#c58a1a', cor2: '#e6b23f' },
+  megasena: { nome: 'Mega-Sena', total: 60, sorteados: 6, apostaMin: 6, apostaMax: 15, premios: [6, 5, 4], cols: 6, fechMax: 14, cor: '#1f9d57', cor2: '#4cc98a' },
+  quina: { nome: 'Quina', total: 80, sorteados: 5, apostaMin: 5, apostaMax: 15, premios: [5, 4, 3, 2], cols: 6, fechMax: 12, cor: '#6a3ad1', cor2: '#9a6cff' },
+  lotomania: { nome: 'Lotomania', total: 100, min: 0, sorteados: 20, apostaMin: 50, apostaMax: 50, premios: [20, 19, 18, 17, 16, 15, 0], cols: 6, fechamento: false, cor: '#f07c00', cor2: '#ff9e33' },
+  duplasena: { nome: 'Dupla Sena', total: 50, sorteados: 6, apostaMin: 6, apostaMax: 15, premios: [6, 5, 4, 3], cols: 6, fechMax: 14, cor: '#b3123a', cor2: '#e04e6e' },
+  diadesorte: { nome: 'Dia de Sorte', total: 31, sorteados: 7, apostaMin: 7, apostaMax: 15, premios: [7, 6, 5, 4], cols: 6, fechMax: 14, mes: true, cor: '#c58a1a', cor2: '#e6b23f' },
 };
 
 /* ================= Estado (recalculado por loteria) ================= */
@@ -1369,7 +1369,7 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
-const APP_VER = 'v51';
+const APP_VER = 'v52';
 const ADMIN_EMAIL = 'kalebsolucoes@gmail.com';
 // Métrica simples e anônima (contador por tipo de evento). Nunca guarda quem foi.
 function registrar(tipo) { try { if (SB) SB.rpc('registrar_evento', { p_tipo: tipo }); } catch (e) {} }
