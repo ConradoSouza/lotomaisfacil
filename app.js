@@ -896,15 +896,17 @@ function buildLottery(key) {
 
   // textos adaptados a cada loteria (evita números chumbados da Lotofácil)
   const uni = L.total <= 25 ? 'pts' : 'ac';
+  const faixaDez = L.apostaMin === L.apostaMax ? `${L.apostaMin} dezenas` : `de ${L.apostaMin} a ${L.apostaMax} dezenas`;
   if ($('somaTit')) $('somaTit').textContent = K;
+  if ($('padroesSub')) $('padroesSub').textContent = `Como os sorteios se comportam no histórico. Bom para entender o que é "normal" nesta loteria.`;
   if ($('parDesc')) { const a = Math.floor(K / 2), b = Math.ceil(K / 2); $('parDesc').textContent = a === b ? `prioriza ${a}/${b}` : `prioriza ${a}/${b} ou ${b}/${a}`; }
-  if ($('conferirSub')) $('conferirSub').textContent = `Escolha de ${L.apostaMin} a ${L.apostaMax} dezenas e veja como esse jogo teria se saído em todos os concursos, e quanto acertaria no último.`;
-  if ($('addApostaHint')) $('addApostaHint').textContent = `${L.apostaMin} a ${L.apostaMax} dezenas`;
+  if ($('conferirSub')) $('conferirSub').textContent = `Escolha ${faixaDez} e veja como esse jogo teria se saído em todos os concursos, e quanto acertaria no último.`;
+  if ($('addApostaHint')) $('addApostaHint').textContent = L.apostaMin === L.apostaMax ? `${L.apostaMin} dezenas` : `${L.apostaMin} a ${L.apostaMax} dezenas`;
   const topPrem = L.premios.filter(p => p > 0).slice(0, 3);
   if ($('labTh1')) $('labTh1').textContent = (topPrem[0] != null ? topPrem[0] : K) + ' ' + uni;
   if ($('labTh2')) $('labTh2').textContent = (topPrem[1] != null ? topPrem[1] : '') + (topPrem[1] != null ? ' ' + uni : '');
   if ($('labTh3')) $('labTh3').textContent = (topPrem[2] != null ? topPrem[2] : '') + (topPrem[2] != null ? ' ' + uni : '');
-  if ($('labComoLer')) { const fator = (K / L.total), ex = L.apostaMin; $('labComoLer').innerHTML = `<b>Como ler:</b> a "média de acertos esperada pelo acaso" é <b>dezenas × ${fator.toFixed(2).replace('.', ',')}</b> (${ex} dezenas → ${(ex * fator).toFixed(1).replace('.', ',')}). Você vai notar que, mudando os pesos, a média mal se move dela — porque a ${L.nome} é aleatória e nenhuma estratégia prevê o sorteio. O backtest serve para <b>estudar e comparar</b>, com honestidade.`; }
+  if ($('labComoLer')) { const fator = (K / L.total), ex = L.apostaMin; $('labComoLer').innerHTML = `<b>Como ler:</b> a "média de acertos esperada pelo acaso" é <b>dezenas × ${fator.toFixed(2).replace('.', ',')}</b> (${ex} dezenas → ${(ex * fator).toFixed(1).replace('.', ',')}). Você vai notar que, mudando os pesos, a média mal se move dela — porque o sorteio é aleatório e nenhuma estratégia prevê o resultado. O backtest serve para <b>estudar e comparar</b>, com honestidade.`; }
 
   // pickers
   buildPicker($('picker'), selConferir, () => L.apostaMax, conferirMsg);
@@ -1366,7 +1368,7 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
-const APP_VER = 'v49';
+const APP_VER = 'v50';
 const ADMIN_EMAIL = 'kalebsolucoes@gmail.com';
 // Métrica simples e anônima (contador por tipo de evento). Nunca guarda quem foi.
 function registrar(tipo) { try { if (SB) SB.rpc('registrar_evento', { p_tipo: tipo }); } catch (e) {} }
