@@ -4,7 +4,7 @@
 
 /* ================= Configuração das loterias ================= */
 const LOTERIAS = {
-  lotofacil: { nome: 'Lotofácil', total: 25, sorteados: 15, apostaMin: 15, apostaMax: 20, premios: [15, 14, 13, 12, 11], cols: 5, fechMax: 20, cor: '#6d3bef', cor2: '#9a6cff' },
+  lotofacil: { nome: 'Lotofácil', total: 25, sorteados: 15, apostaMin: 15, apostaMax: 20, premios: [15, 14, 13, 12, 11], cols: 6, fechMax: 20, cor: '#6d3bef', cor2: '#9a6cff' },
   megasena: { nome: 'Mega-Sena', total: 60, sorteados: 6, apostaMin: 6, apostaMax: 15, premios: [6, 5, 4], cols: 10, fechMax: 14, cor: '#1f9d57', cor2: '#4cc98a' },
   quina: { nome: 'Quina', total: 80, sorteados: 5, apostaMin: 5, apostaMax: 15, premios: [5, 4, 3, 2], cols: 10, fechMax: 12, cor: '#6a3ad1', cor2: '#9a6cff' },
   lotomania: { nome: 'Lotomania', total: 100, min: 0, sorteados: 20, apostaMin: 50, apostaMax: 50, premios: [20, 19, 18, 17, 16, 15, 0], cols: 10, fechamento: false, cor: '#f07c00', cor2: '#ff9e33' },
@@ -17,6 +17,7 @@ let L, KEY, DRAWS, N, NUMS, K, EVENS;
 let freqAll, atraso, maxAtraso, repHist, repCount, repMean, parHist, somas, somaMin, somaMax, somaAvg, somaSd;
 let faixaDefs, faixaTot, co, afinStrength, score, lastDraw, lastSet, premiosRef;
 function money(v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+function uniAc() { return (typeof L !== 'undefined' && L && L.total <= 25) ? 'pontos' : 'acertos'; } // Lotofácil usa "pontos", as demais "acertos"
 function moneyShort(v) { v = v || 0; if (v >= 1e6) return 'R$ ' + (v / 1e6).toFixed(1).replace('.', ',') + ' mi'; if (v >= 1e3) return 'R$ ' + (v / 1e3).toFixed(1).replace('.', ',') + ' mil'; return money(v); }
 function premioDe(hits) { return premiosRef && premiosRef.premios && premiosRef.premios[hits]; } // [valor, ganhadores] ou undefined
 function ganhou(hits) { return L.premios.includes(hits); } // faixa premiada? (Lotomania: 0 ou 15-20)
@@ -126,7 +127,7 @@ function renderPainel() {
     $('painelPremios').innerHTML = L.premios.map(h => {
       const p = premiosRef.premios[h]; if (!p) return '';
       const venceu = p[1] > 0;
-      return `<div class="result-line"><span class="k">${h} acertos</span><span class="v">${venceu ? money(p[0]) + ' <span style="color:var(--muted);font-weight:400;">· ' + p[1].toLocaleString('pt-BR') + ' ganhador(es)</span>' : '<span style="color:var(--amber);">Acumulou</span>'}</span></div>`;
+      return `<div class="result-line"><span class="k">${h} ${uniAc()}</span><span class="v">${venceu ? money(p[0]) + ' <span style="color:var(--muted);font-weight:400;">· ' + p[1].toLocaleString('pt-BR') + ' ganhador(es)</span>' : '<span style="color:var(--amber);">Acumulou</span>'}</span></div>`;
     }).join('');
   } else { $('premiosBlock').style.display = 'none'; }
 
@@ -174,7 +175,7 @@ function renderAutoConf() {
   const isNew = stored && last[0] > stored, win = wins > 0;
   const badge = isNew ? '<span class="badge-new">novo</span>' : '';
   const txt = win
-    ? `${badge}<b>🎉 Você ganhou!</b> No concurso <b>#${last[0]}</b>, ${wins} jogo(s) premiado(s) — melhor: <b>${best} acertos</b>${bestPremio > 0 ? ' (~' + moneyShort(bestPremio) + ')' : ''}.`
+    ? `${badge}<b>🎉 Você ganhou!</b> No concurso <b>#${last[0]}</b>, ${wins} jogo(s) premiado(s) — melhor: <b>${best} ${uniAc()}</b>${bestPremio > 0 ? ' (~' + moneyShort(bestPremio) + ')' : ''}.`
     : `${badge}No concurso <b>#${last[0]}</b>, seu melhor jogo fez <b>${best} acerto(s)</b>. Boa sorte no próximo! 🍀`;
   box.innerHTML = `<div class="banner ${win ? 'win' : ''}"><span class="bi">${win ? '🏆' : '🍀'}</span><span class="bt">${txt}</span><button class="bx" title="Fechar">✕</button></div>`;
   box.querySelector('.bx').addEventListener('click', () => { box.innerHTML = ''; });
@@ -1194,11 +1195,11 @@ $('labRun').addEventListener('click', () => {
   $('labResult').innerHTML = `<div class="note">Rodando backtest…</div>`;
   setTimeout(() => {
     const r = runBacktest(w, topK, range), exp = topK * K / L.total, diff = r.avg - exp;
-    let grid = ''; L.premios.forEach(h => grid += `<div class="hitbox"><div class="hn">${r.hits[h] || 0}</div><div class="hl">${h} acertos<br>${((r.hits[h] || 0) / r.tests * 100).toFixed(2)}%</div></div>`);
+    let grid = ''; L.premios.forEach(h => grid += `<div class="hitbox"><div class="hn">${r.hits[h] || 0}</div><div class="hl">${h} ${uniAc()}<br>${((r.hits[h] || 0) / r.tests * 100).toFixed(2)}%</div></div>`);
     $('labResult').innerHTML = `<div class="card">
-      <div class="bignum"><span class="b">${r.avg.toFixed(2)}</span><span class="bd">acertos em média<br>por jogo de ${topK} dezenas</span></div>
+      <div class="bignum"><span class="b">${r.avg.toFixed(2)}</span><span class="bd">${uniAc()} em média<br>por jogo de ${topK} dezenas</span></div>
       <div class="result-line"><span class="k">Esperado pelo acaso</span><span class="v">${exp.toFixed(2)} <span style="color:${Math.abs(diff) < 0.15 ? 'var(--muted)' : (diff > 0 ? 'var(--green)' : 'var(--red)')}">(${diff >= 0 ? '+' : ''}${diff.toFixed(2)})</span></span></div>
-      <div class="result-line"><span class="k">Melhor jogo do teste</span><span class="v">${r.maxHit} acertos</span></div>
+      <div class="result-line"><span class="k">Melhor jogo do teste</span><span class="v">${r.maxHit} ${uniAc()}</span></div>
       <div class="result-line"><span class="k">Concursos testados</span><span class="v">${r.tests}</span></div>
       <h3 style="margin:14px 0 4px;font-size:14px;">Quantas vezes teria feito</h3><div class="hitgrid">${grid}</div>
       <button class="btn sec" id="labSave" style="margin-top:14px;">Salvar para comparar</button></div>`;
@@ -1216,9 +1217,9 @@ $('mcRun').addEventListener('click', () => {
     const atLeast = h => { let c = 0; for (let k = h; k <= K; k++) c += bestTier[k]; return c; };
     const pct = v => { const p = v / T * 100; return p >= 1 ? p.toFixed(1) + '%' : p >= 0.01 ? p.toFixed(2) + '%' : p > 0 ? p.toFixed(3) + '%' : '~0%'; };
     const oneIn = h => { const p = atLeast(h) / T; return p > 0 ? '1 em ' + Math.round(1 / p).toLocaleString('pt-BR') : '—'; };
-    let grid = ''; L.premios.filter(h => h > 0).forEach(h => grid += `<div class="hitbox"><div class="hn" style="font-size:17px;">${pct(atLeast(h))}</div><div class="hl">≥ ${h} acertos<br>${oneIn(h)}</div></div>`);
+    let grid = ''; L.premios.filter(h => h > 0).forEach(h => grid += `<div class="hitbox"><div class="hn" style="font-size:17px;">${pct(atLeast(h))}</div><div class="hl">≥ ${h} ${uniAc()}<br>${oneIn(h)}</div></div>`);
     $('mcResult').innerHTML = `<div class="card" style="margin-top:6px;">
-      <div class="bignum"><span class="b">${(sumBest / T).toFixed(2)}</span><span class="bd">acertos no melhor jogo,<br>em média, jogando ${X} por concurso</span></div>
+      <div class="bignum"><span class="b">${(sumBest / T).toFixed(2)}</span><span class="bd">${uniAc()} no melhor jogo,<br>em média, jogando ${X} por concurso</span></div>
       <h3 style="margin:12px 0 4px;font-size:14px;">Chance de pelo menos um prêmio</h3><div class="hitgrid">${grid}</div>
       <p style="font-size:12px;color:var(--muted);margin:12px 0 0;">Jogar mais jogos aumenta a chance na mesma proporção do custo. As probabilidades <b>não dependem de quais dezenas</b> você escolhe.</p></div>`;
   }, 30);
@@ -1231,7 +1232,7 @@ $('checkBtn').addEventListener('click', () => {
   DRAWS.forEach(d => { const h = d[2].filter(n => chosen.has(n)).length; hits[h]++; if (h > best) { best = h; bestDraw = d; } });
   const last = DRAWS[N - 1], lastHits = last[2].filter(n => chosen.has(n)).length;
   const arr = [...chosen].sort((a, b) => a - b), soma = arr.reduce((a, b) => a + b, 0), pares = arr.filter(n => n % 2 === 0).length;
-  let grid = ''; L.premios.forEach(h => { const pr = premioDe(h); grid += `<div class="hitbox"><div class="hn">${hits[h] || 0}</div><div class="hl">${h} acertos<br>${((hits[h] || 0) / N * 100).toFixed(2)}%${pr && pr[1] > 0 ? '<br><span style="color:var(--green);font-weight:700;">~' + moneyShort(pr[0]) + '</span>' : ''}</div></div>`; });
+  let grid = ''; L.premios.forEach(h => { const pr = premioDe(h); grid += `<div class="hitbox"><div class="hn">${hits[h] || 0}</div><div class="hl">${h} ${uniAc()}<br>${((hits[h] || 0) / N * 100).toFixed(2)}%${pr && pr[1] > 0 ? '<br><span style="color:var(--green);font-weight:700;">~' + moneyShort(pr[0]) + '</span>' : ''}</div></div>`; });
   const lp = premioDe(lastHits);
   // Mês da Sorte (Dia de Sorte)
   let mesLinhas = '';
@@ -1245,9 +1246,9 @@ $('checkBtn').addEventListener('click', () => {
   $('checkResults').innerHTML = `<div class="card">
     <div class="result-line"><span class="k">Dezenas</span><span class="v">${arr.map(pad).join(' ')}</span></div>
     <div class="result-line"><span class="k">Soma / Pares</span><span class="v">${soma} · ${pares}P/${arr.length - pares}I</span></div>
-    <div class="result-line"><span class="k">No último concurso (#${last[0]})</span><span class="v">${lastHits} acertos${lp && lp[1] > 0 ? ' · pagaria ~' + moneyShort(lp[0]) : ''}</span></div>
+    <div class="result-line"><span class="k">No último concurso (#${last[0]})</span><span class="v">${lastHits} ${uniAc()}${lp && lp[1] > 0 ? ' · pagaria ~' + moneyShort(lp[0]) : ''}</span></div>
     ${mesLinhas}
-    <div class="result-line"><span class="k">Melhor da história</span><span class="v">${best} acertos · #${bestDraw[0]} (${bestDraw[1]})</span></div>
+    <div class="result-line"><span class="k">Melhor da história</span><span class="v">${best} ${uniAc()} · #${bestDraw[0]} (${bestDraw[1]})</span></div>
     <h3 style="margin:14px 0 4px;font-size:14px;">Distribuição em ${N} concursos</h3><div class="hitgrid">${grid}</div></div>`;
 });
 $('clearBtn').addEventListener('click', () => { selConferir.clear(); $('picker').querySelectorAll('.pcell').forEach(c => c.classList.remove('sel')); conferirMsg(); $('checkResults').innerHTML = ''; });
@@ -1368,7 +1369,7 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
-const APP_VER = 'v50';
+const APP_VER = 'v51';
 const ADMIN_EMAIL = 'kalebsolucoes@gmail.com';
 // Métrica simples e anônima (contador por tipo de evento). Nunca guarda quem foi.
 function registrar(tipo) { try { if (SB) SB.rpc('registrar_evento', { p_tipo: tipo }); } catch (e) {} }
