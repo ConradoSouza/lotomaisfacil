@@ -356,7 +356,7 @@
     <p class="sub">Como os sorteios se comportam no histórico. Bom para entender o que é "normal" na Lotofácil.</p>
     <div class="grid2">
       <section class="block"><h3>Pares por sorteio</h3><div class="card" id="parChart"></div></section>
-      <section class="block"><h3>Soma dos 15 <span class="hint" id="somaHint"></span></h3><div class="card" id="somaChart"></div></section>
+      <section class="block"><h3>Soma das <span id="somaTit">15</span> dezenas <span class="hint" id="somaHint"></span></h3><div class="card" id="somaChart"></div></section>
     </div>
     <div class="grid2">
       <section class="block"><h3>Faixas do volante</h3><div class="card" id="faixaChart"></div></section>
@@ -432,11 +432,11 @@
       <h3>Filtros</h3>
       <div class="card">
         <div class="toggle-row">
-          <div><div class="tl">Repetir do último concurso</div><div class="td" id="repDesc">8 a 10 dezenas do último resultado</div></div>
+          <div><div class="tl">Repetir do último concurso</div><div class="td" id="repDesc">repete parte das dezenas do último concurso</div></div>
           <label class="sw"><input type="checkbox" id="fRep" checked><span class="track"></span></label>
         </div>
         <div class="toggle-row">
-          <div><div class="tl">Equilíbrio pares/ímpares</div><div class="td">prioriza 7/8 ou 8/7</div></div>
+          <div><div class="tl">Equilíbrio pares/ímpares</div><div class="td" id="parDesc">prioriza um equilíbrio de pares e ímpares</div></div>
           <label class="sw"><input type="checkbox" id="fPar" checked><span class="track"></span></label>
         </div>
         <div class="toggle-row">
@@ -467,7 +467,7 @@
     </section>
 
     <div id="genResults"></div>
-    <p class="footer-note" style="margin-top:8px;">Os filtros moldam a composição do jogo — não aumentam a chance real de acerto. A Lotofácil é aleatória.</p>
+    <p class="footer-note" style="margin-top:8px;">Os filtros moldam a composição do jogo — não aumentam a chance real de acerto. A loteria é aleatória.</p>
     </div><!-- /genMode -->
 
     <div id="estMode" style="display:none;">
@@ -556,14 +556,14 @@
       <button class="btn" id="fechBtn" style="margin-top:12px;">Gerar fechamento</button>
       <button class="btn sec" id="fechTabela" style="margin-top:8px;">📊 Comparar custo × garantia</button>
       <div id="fechResult"></div>
-      <p class="footer-note" style="margin-top:8px;">O fechamento reduz o custo, mas <b>não aumenta</b> a chance de acertar as 15. Só garante um prêmio menor se você acertar todas as 15 dentro do seu bolão.</p>
+      <p class="footer-note" style="margin-top:8px;">O fechamento reduz o custo, mas <b>não aumenta</b> a chance de acertar <b>todas</b> as dezenas. Só garante um prêmio menor se você acertar todas as sorteadas dentro do seu bolão.</p>
     </div><!-- /fechMode -->
   </section>
 
   <!-- CONFERIR -->
   <section id="tab-conferir" class="tab">
     <h2 class="page">Conferir jogo <button class="qbtn" data-tip="Escolha suas dezenas e veja quantas você acertaria em <b>cada concurso da história</b> e no último.">?</button></h2>
-    <p class="sub">Escolha de 15 a 18 dezenas e veja como esse jogo teria se saído em todos os concursos, e quanto acertaria no último.</p>
+    <p class="sub" id="conferirSub">Escolha suas dezenas e veja como esse jogo teria se saído em todos os concursos, e quanto acertaria no último.</p>
     <div class="picker" id="picker"></div>
     <p class="sub" id="pickMsg" style="text-align:center;"></p>
     <div id="conferirMesWrap" style="display:none;max-width:320px;margin:0 auto 14px;">
@@ -615,7 +615,7 @@
       <h3>Comparação de estratégias</h3>
       <div class="card tbl-wrap">
         <table id="labTable">
-          <thead><tr><th>Estratégia</th><th>Média</th><th>vs acaso</th><th>15 pts</th><th>14 pts</th><th>13 pts</th></tr></thead>
+          <thead><tr><th>Estratégia</th><th>Média</th><th>vs acaso</th><th id="labTh1">15 pts</th><th id="labTh2">14 pts</th><th id="labTh3">13 pts</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -640,8 +640,8 @@
       <div id="mcResult"></div>
     </section>
 
-    <div class="note" style="margin-top:12px;">
-      <b>Como ler:</b> a "média de acertos esperada pelo acaso" é <b>dezenas × 0,6</b> (15 dezenas → 9,0). Você vai notar que, mudando os pesos, a média mal se move dela — porque a Lotofácil é aleatória e nenhuma estratégia prevê o sorteio. O backtest serve para <b>estudar e comparar</b>, com honestidade.
+    <div class="note" style="margin-top:12px;" id="labComoLer">
+      <b>Como ler:</b> a "média de acertos esperada pelo acaso" é <b>dezenas × 0,6</b>. Você vai notar que, mudando os pesos, a média mal se move dela — porque a loteria é aleatória e nenhuma estratégia prevê o sorteio. O backtest serve para <b>estudar e comparar</b>, com honestidade.
     </div>
   </section>
 
@@ -655,7 +655,7 @@
       <span class="li">🏆 = ganhou prêmio</span>
     </div>
     <section class="block">
-      <h3>Adicionar aposta <span class="hint">15 a 20 dezenas</span></h3>
+      <h3>Adicionar aposta <span class="hint" id="addApostaHint">15 a 20 dezenas</span></h3>
       <div class="card">
         <div class="picker" id="meusPicker"></div>
         <p class="sub" id="meusPickMsg" style="text-align:center;"></p>
