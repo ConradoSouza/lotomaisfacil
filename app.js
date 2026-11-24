@@ -374,7 +374,7 @@ function printGames(title, games) {
     <button onclick="window.print()">Imprimir / Salvar PDF</button></body></html>`);
   w.document.close();
 }
-const APP_URL = 'https://lotomaisfacil.pages.dev/';
+const APP_URL = 'https://lotomaisfacil.criarsolucoesia.com/';
 // leva as dezenas dos jogos gerados para o modo Fechamento (bolão = união das dezenas)
 function copyToFechamento(games) {
   $('gerToggle').querySelector('[data-mode="fechamento"]').click();
@@ -1369,7 +1369,7 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
-const APP_VER = 'v52';
+const APP_VER = 'v53';
 const ADMIN_EMAIL = 'kalebsolucoes@gmail.com';
 // Métrica simples e anônima (contador por tipo de evento). Nunca guarda quem foi.
 function registrar(tipo) { try { if (SB) SB.rpc('registrar_evento', { p_tipo: tipo }); } catch (e) {} }
@@ -1680,7 +1680,7 @@ async function aplicarReferral() {
 }
 function refSectionHTML() {
   if (!usuario) return '';
-  const link = 'https://lotomaisfacil.pages.dev/app.html?ref=' + usuario.id;
+  const link = 'https://lotomaisfacil.criarsolucoesia.com/app.html?ref=' + usuario.id;
   return `<div style="border-top:1px solid var(--line);margin-top:16px;padding-top:14px;">
     <b>🎁 Indique e ganhe</b>
     <div class="sub" style="margin:2px 0 10px;">Quando alguém <b>assinar o Pro</b> pelo seu link, você ganha <b>15 dias de Pro</b>.</div>

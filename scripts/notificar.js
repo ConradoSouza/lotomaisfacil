@@ -10,7 +10,7 @@ let webpush;
 try { webpush = require('web-push'); } catch (e) { console.log('web-push não instalado; pulei os avisos.'); process.exit(0); }
 
 const { SUPABASE_URL, SUPABASE_SERVICE_ROLE, VAPID_PUBLIC, VAPID_PRIVATE, VAPID_SUBJECT } = process.env;
-const APP_URL = 'https://lotomaisfacil.pages.dev/app.html';
+const APP_URL = 'https://lotomaisfacil.criarsolucoesia.com/app.html';
 
 function ler(nome, fb) { try { return JSON.parse(fs.readFileSync(path.join(__dirname, nome), 'utf8')); } catch (e) { return fb; } }
 

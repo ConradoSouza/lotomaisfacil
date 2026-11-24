@@ -2,7 +2,7 @@
 // Chamada pelo app (usuário logado). Requer o secret MP_ACCESS_TOKEN.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const APP_URL = 'https://lotomaisfacil.pages.dev/';
+const APP_URL = 'https://lotomaisfacil.criarsolucoesia.com/';
 const PRECO = 9.90;
 
 const cors = {
