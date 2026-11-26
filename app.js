@@ -1356,6 +1356,9 @@ $('apostarClose').addEventListener('click', fecharApostar);
 $('apostarModal').addEventListener('click', e => { if (e.target === $('apostarModal')) fecharApostar(); });
 $('installBtn2').addEventListener('click', () => { if (deferredPrompt) doInstall(); else $('iosHint').style.display = ''; });
 $('shareApp').addEventListener('click', () => window.open('https://wa.me/?text=' + encodeURIComponent('🍀 Loto+Facil — análise e gerador de jogos das loterias da Caixa:\n' + APP_URL), '_blank'));
+// Indicar o app pra um amigo (card do Painel). Se logado, usa o link de indicação (ganha Pro); senão, o link normal.
+function linkIndicacao() { return (typeof usuario !== 'undefined' && usuario) ? ('https://lotomaisfacil.criarsolucoesia.com/app.html?ref=' + usuario.id) : APP_URL; }
+if ($('indicarBtn')) $('indicarBtn').addEventListener('click', () => window.open('https://wa.me/?text=' + encodeURIComponent('🍀 Uso o *Loto+Facil* pra analisar e gerar jogos das loterias da Caixa. Testa aí:\n' + linkIndicacao()), '_blank'));
 $('copyLink').addEventListener('click', e => { if (navigator.clipboard) navigator.clipboard.writeText(APP_URL).then(() => { e.target.textContent = '✓ Copiado'; setTimeout(() => e.target.textContent = '🔗 Copiar link', 1500); }).catch(() => {}); });
 
 // Tema
@@ -1369,7 +1372,7 @@ const SB = (window.LOTO_CFG && window.LOTO_CFG.SUPABASE_URL && window.supabase)
   : null;
 let usuario = null, perfil = null, modoCadastro = false;
 const VAPID_PUBLIC = (window.LOTO_CFG && window.LOTO_CFG.VAPID_PUBLIC) || '';
-const APP_VER = 'v53';
+const APP_VER = 'v54';
 const ADMIN_EMAIL = 'kalebsolucoes@gmail.com';
 // Métrica simples e anônima (contador por tipo de evento). Nunca guarda quem foi.
 function registrar(tipo) { try { if (SB) SB.rpc('registrar_evento', { p_tipo: tipo }); } catch (e) {} }
